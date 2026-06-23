@@ -6,8 +6,38 @@ import {
   Lock, Unlock, Eye, EyeOff, PlayCircle, RotateCcw, 
   ChevronLeft, ChevronRight, ChevronDown, CheckSquare, Edit3, Activity,
   UserPlus, UserMinus, RefreshCw, Filter, Link, Copy, LogOut, Check, Bug, Shield, Clock,
-  FileText, Plus, Save, Download, Upload, Trash2, Copy as CopyIcon
+  FileText, Plus, Save, Download, Upload, Trash2, Copy as CopyIcon, Search
 } from 'lucide-react';
+
+// === FIREBASE ИНТЕГРАЦИЯ ===
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
+
+// 🔴 ВАЖНО: ЗАМЕСТИ ТЕЗИ СТОЙНОСТИ С ТВОИТЕ ОТ FIREBASE КОНЗОЛАТА! 🔴
+const userFirebaseConfig = {
+  aapiKey: "AIzaSyC7AFoL5wZhxceS8XxZ_06rmBMJCGRjKT0",
+  authDomain: "facilume.firebaseapp.com",
+  projectId: "facilume",
+  storageBucket: "facilume.firebasestorage.app",
+  messagingSenderId: "969775767462",
+  appId: "1:969775767462:web:2d4b53fd26c1f187f93967",
+  measurementId: "G-DLHVG45W0J"
+};
+
+// Защита: Ако сме в Canvas среда използваме глобалния config, иначе твоя (за Vercel).
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'facilume-wsjf';
+
+let app, auth, db;
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+} catch (e) {
+  console.error("Firebase init error:", e);
+}
+// ==========================
 
 const translations = {
   en: {
@@ -104,7 +134,6 @@ const translations = {
     helperRr: "What risk does this reduce or opportunity enable?",
     helperJs: "How large is the effort compared to other features?",
     
-    // TRAINER ACCESS STRINGS
     trainerAccessTitle: "Trainer Access",
     trainerAccessSub: "Enter PIN to access the facilitation cockpit.",
     trainerPinLabel: "Trainer PIN (Use 0000)",
@@ -112,7 +141,6 @@ const translations = {
     incorrectPin: "Incorrect Trainer PIN.",
     backToParticipant: "Back to Participant Join",
 
-    // NEW SCENARIO STRINGS
     tabScenario: "Scenario Builder",
     tabRoles: "Role Setup",
     tabSettings: "Session Settings",
@@ -140,6 +168,12 @@ const translations = {
       submitted: "Submitted",
       rescored: "Re-scored"
     },
+    
+    findSessionTitle: "Find Training Session",
+    sessionIdInput: "Enter Session ID",
+    btnFindSession: "Find Session",
+    sessionNotFound: "Session not found. Check the ID and try again.",
+    
     joinTitle: "Join WSJF Session",
     joinNameInput: "Participant name",
     joinRoleSelect: "Available role",
@@ -269,7 +303,6 @@ const translations = {
     helperRr: "Какъв риск намалява или възможност отключва?",
     helperJs: "Колко голямо е усилието спрямо останалите?",
     
-    // TRAINER ACCESS STRINGS
     trainerAccessTitle: "Достъп за тренера",
     trainerAccessSub: "Въведете PIN за достъп.",
     trainerPinLabel: "PIN (Използвайте 0000)",
@@ -277,7 +310,6 @@ const translations = {
     incorrectPin: "Грешен PIN.",
     backToParticipant: "Обратно към лоби",
 
-    // NEW SCENARIO STRINGS
     tabScenario: "Редактор на сценарии",
     tabRoles: "Настройка на роли",
     tabSettings: "Настройки на сесията",
@@ -305,6 +337,12 @@ const translations = {
       submitted: "Изпратено",
       rescored: "Преоценено"
     },
+    
+    findSessionTitle: "Намери сесия",
+    sessionIdInput: "Въведи ID на сесия",
+    btnFindSession: "Намери",
+    sessionNotFound: "Сесията не е намерена. Провери ID-то.",
+    
     joinTitle: "Присъединяване",
     joinNameInput: "Име на участник",
     joinRoleSelect: "Избор на роля",
@@ -358,20 +396,6 @@ const defaultTemplates = [
       { id: 5, title_en: "Profile Management", title_bg: "Управление на профил", desc_en: "Manage personal info and addresses.", desc_bg: "Управление на лични данни и адреси.", details_en: "", details_bg: "", bv: 8, tc: 5, rr: 8, js: 8 },
       { id: 6, title_en: "Book Browsing", title_bg: "Разглеждане", desc_en: "Browse categories and recommendations.", desc_bg: "Разглеждане на категории и препоръки.", details_en: "", details_bg: "", bv: 20, tc: 13, rr: 5, js: 3 }
     ]
-  },
-  {
-    id: 'banking',
-    isBuiltIn: true,
-    nameEn: "Digital Banking Mobile",
-    nameBg: "Дигитално банкиране",
-    descEn: "Prioritize new features for a mobile banking app.",
-    descBg: "Приоритизирайте нови функционалности за мобилно банкиране.",
-    features: [
-      { id: 101, title_en: "Mobile Account Opening", title_bg: "Откриване на сметка", desc_en: "Allow opening accounts via app.", desc_bg: "Откриване през приложението.", details_en: "", details_bg: "", bv: 20, tc: 13, rr: 5, js: 13 },
-      { id: 102, title_en: "Fraud Alert Dashboard", title_bg: "Известия за измами", desc_en: "Real-time fraud alerts and blocks.", desc_bg: "Известия в реално време и блокиране.", details_en: "", details_bg: "", bv: 13, tc: 20, rr: 20, js: 8 },
-      { id: 103, title_en: "Card Freeze/Unfreeze", title_bg: "Замразяване на карта", desc_en: "Quick toggle to lock debit cards.", desc_bg: "Бързо заключване на дебитни карти.", details_en: "", details_bg: "", bv: 13, tc: 13, rr: 13, js: 3 },
-      { id: 104, title_en: "Crypto Exchange", title_bg: "Крипто обмяна", desc_en: "Buy and sell basic cryptocurrencies.", desc_bg: "Купуване и продаване на криптовалути.", details_en: "", details_bg: "", bv: 8, tc: 5, rr: 3, js: 20 }
-    ]
   }
 ];
 
@@ -397,6 +421,24 @@ export default function App() {
 
   const t = translations[lang] || translations.en;
 
+  // FIREBASE AUTH
+  const [authUser, setAuthUser] = useState(null);
+  useEffect(() => {
+    if (!auth) return;
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (e) { console.error("Auth error", e); }
+    };
+    initAuth();
+    const unsub = onAuthStateChanged(auth, u => setAuthUser(u));
+    return () => unsub();
+  }, []);
+
   // SCENARIO STATE
   const [customScenarios, setCustomScenarios] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wsjf_scenarios') || '[]'); } catch { return []; }
@@ -419,7 +461,7 @@ export default function App() {
     lifecycleStatus: 'draft', 
     activeFeatureId: activeFeatures[0]?.id || 1,
     capacity: 30,
-    demoMode: true,
+    demoMode: false,
   });
 
   const [featureRoundState, setFeatureRoundState] = useState(() => {
@@ -434,6 +476,10 @@ export default function App() {
   const [participantScores, setParticipantScores] = useState({});
   const [sessionTimeline, setSessionTimeline] = useState([]);
 
+  // PARTICIPANT JOIN STATE
+  const [joinSessionId, setJoinSessionId] = useState("");
+  const [sessionFound, setSessionFound] = useState(false);
+  const [joinError, setJoinError] = useState("");
   const [currentParticipantId, setCurrentParticipantId] = useState(null);
   const [joinName, setJoinName] = useState("");
   const [joinRoleSlotId, setJoinRoleSlotId] = useState("");
@@ -449,6 +495,8 @@ export default function App() {
   const [expandedDetailsId, setExpandedDetailsId] = useState(null);
   const [showFeatureDetails, setShowFeatureDetails] = useState(false);
 
+  const getDbRef = useCallback((sId) => doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId || session.id), [session.id]);
+
   const logTimelineEvent = useCallback((type, desc, featureId = null) => {
     setSessionTimeline(prev => [
       { id: Date.now() + Math.random(), timestamp: new Date().toLocaleTimeString(), type, desc, featureId },
@@ -456,8 +504,9 @@ export default function App() {
     ]);
   }, []);
 
-  // Sync Features round state when scenario changes
+  // Sync Features round state when scenario changes (Local Trainer)
   useEffect(() => {
+     if(accessMode !== 'trainerUnlocked') return;
      setFeatureRoundState(prev => {
         const next = { ...prev };
         activeFeatures.forEach(f => {
@@ -465,67 +514,47 @@ export default function App() {
         });
         return next;
      });
-  }, [activeFeatures]);
+  }, [activeFeatures, accessMode]);
 
-  // Demo Participants Generator
+  // FIREBASE REAL-TIME LISTENER
   useEffect(() => {
-    if (session.demoMode && session.lifecycleStatus !== 'ended') {
-      setJoinedParticipants(prev => {
-        let newMocks = [];
-        let nameIndex = 0;
-        roleSlots.forEach(slot => {
-          const currentJoined = prev.filter(p => p.roleSlotId === slot.id).length;
-          const needed = slot.seats - currentJoined;
-          for (let i = 0; i < needed; i++) {
-            newMocks.push({
-              id: `mock-${slot.id}-${i}-${Date.now()}`,
-              name: mockNames[nameIndex % mockNames.length] + " (Mock)",
-              roleSlotId: slot.id, role: slot.role, isMock: true
-            });
-            nameIndex++;
-          }
-        });
-        return [...prev, ...newMocks];
-      });
-    } else {
-      setJoinedParticipants(prev => prev.filter(p => !p.isMock));
-    }
-  }, [session.demoMode, roleSlots, session.lifecycleStatus]);
+    if (!authUser || !db || session.lifecycleStatus === 'draft') return;
+    if (accessMode === 'participant' && !sessionFound) return;
 
-  // Demo Scores Generator
+    const ref = getDbRef();
+    const unsub = onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        
+        // Everyone receives latest participants and scores
+        setJoinedParticipants(data.joinedParticipants || []);
+        setParticipantScores(data.participantScores || {});
+
+        // Participants overwrite their local master state with Trainer's state
+        if (accessMode === 'participant' || accessMode === 'participantPreview') {
+           if (data.session) setSession(data.session);
+           if (data.featureRoundState) setFeatureRoundState(data.featureRoundState);
+           if (data.activeScenarioId) setActiveScenarioId(data.activeScenarioId);
+           if (data.roleSlots) setRoleSlots(data.roleSlots);
+        }
+      }
+    }, (err) => console.error("Sync error", err));
+    return () => unsub();
+  }, [authUser, session.id, session.lifecycleStatus, accessMode, sessionFound, getDbRef]);
+
+  // FIREBASE TRAINER STATE PUSH
   useEffect(() => {
-    const activeFeatState = featureRoundState[session.activeFeatureId] || {};
-    if (session.demoMode && session.lifecycleStatus === 'inProgress' && (activeFeatState.status === 'scoringOpen' || activeFeatState.status === 'reScoreOpen')) {
-      const itemData = activeFeatures.find(i => i.id === session.activeFeatureId);
-      if (!itemData) return;
-      const targetField = activeFeatState.status === 'scoringOpen' ? 'initial' : 'revised';
-      
-      setParticipantScores(prev => {
-        const newScores = { ...prev };
-        let hasChanges = false;
-        joinedParticipants.filter(p => p.isMock).forEach(p => {
-          if (!newScores[p.id]) newScores[p.id] = {};
-          if (!newScores[p.id][session.activeFeatureId]) newScores[p.id][session.activeFeatureId] = {};
-          const currentScore = newScores[p.id][session.activeFeatureId][targetField];
-          if (!currentScore?.submitted) {
-            hasChanges = true;
-            let rBv = itemData.bv, rTc = itemData.tc, rRr = itemData.rr, rJs = itemData.js;
-            // Introduce some variance for demo
-            if (p.role === 'arch') { rBv = Math.max(1, rBv - 2); rRr += 3; rJs += 5; }
-            if (p.role === 'bo') { rBv += 5; rTc += 3; rJs = Math.max(1, rJs - 2); }
-            if (p.role === 'dev') { rJs += 3; rBv = Math.max(1, rBv - 1); }
-            if (p.role === 'qa') { rJs += 4; }
-            
-            newScores[p.id][session.activeFeatureId][targetField] = {
-              bv: snapToScale(rBv), tc: snapToScale(rTc), rr: snapToScale(rRr), js: snapToScale(rJs),
-              submitted: true, submittedAt: new Date().toISOString()
-            };
-          }
-        });
-        return hasChanges ? newScores : prev;
-      });
+    if (accessMode === 'trainerUnlocked' && session.lifecycleStatus !== 'draft' && db) {
+      const pushState = async () => {
+        try {
+          await setDoc(getDbRef(), {
+             session, featureRoundState, activeScenarioId, roleSlots
+          }, { merge: true });
+        } catch(e) { console.error("Push state error", e); }
+      };
+      pushState();
     }
-  }, [featureRoundState, session.activeFeatureId, joinedParticipants, session.demoMode, session.lifecycleStatus, activeFeatures]);
+  }, [session, featureRoundState, activeScenarioId, roleSlots, accessMode, getDbRef]);
 
   // Sync Draft Scores
   useEffect(() => {
@@ -708,6 +737,25 @@ export default function App() {
     return processed;
   }, [calcCriterionStats, session.capacity, activeFeatures]);
 
+  const handleOpenLobby = async () => {
+    const newState = 'lobbyOpen';
+    setSession(prev => ({ ...prev, lifecycleStatus: newState }));
+    logTimelineEvent('SESSION', `Status changed to ${newState}`);
+    
+    if (db) {
+       try {
+          await setDoc(getDbRef(), {
+             session: { ...session, lifecycleStatus: newState },
+             featureRoundState,
+             activeScenarioId,
+             roleSlots,
+             joinedParticipants: [],
+             participantScores: {}
+          });
+       } catch(e) { console.error("Failed to create session", e); }
+    }
+  };
+
   const updateSessionState = (newState) => {
      setSession(prev => ({ ...prev, lifecycleStatus: newState }));
      logTimelineEvent('SESSION', `Status changed to ${newState}`);
@@ -742,16 +790,15 @@ export default function App() {
     logTimelineEvent('FEATURE', `Mapsd to feature`, newId);
   };
 
-  const executeResetFeatureRound = () => {
-    setParticipantScores(prev => {
-      const newScores = { ...prev };
-      Object.keys(newScores).forEach(pId => {
-        if (newScores[pId][session.activeFeatureId]) {
-           newScores[pId][session.activeFeatureId] = { initial: {}, revised: {} };
-        }
-      });
-      return newScores;
+  const executeResetFeatureRound = async () => {
+    const newScores = { ...participantScores };
+    Object.keys(newScores).forEach(pId => {
+      if (newScores[pId][session.activeFeatureId]) {
+         newScores[pId][session.activeFeatureId] = { initial: {}, revised: {} };
+      }
     });
+    setParticipantScores(newScores);
+    
     setFeatureRoundState(prev => ({
        ...prev,
        [session.activeFeatureId]: { status: 'notStarted', resultsRevealed: false }
@@ -759,6 +806,10 @@ export default function App() {
     setDraftScores({ bv: null, tc: null, rr: null, js: null });
     setShowResetConfirm(false);
     logTimelineEvent('FEATURE', `Scores reset`, session.activeFeatureId);
+
+    if (db) {
+       await updateDoc(getDbRef(), { participantScores: newScores });
+    }
   };
 
   const handleEndSession = () => {
@@ -766,25 +817,52 @@ export default function App() {
      setShowEndSessionModal(false);
   };
 
-  const handleJoin = () => {
-    if (!joinName.trim() || !joinRoleSlotId) return;
+  const findSession = async () => {
+    if (!joinSessionId.trim() || !db) return;
+    try {
+      const snap = await getDoc(getDbRef(joinSessionId.toUpperCase()));
+      if (snap.exists()) {
+         const data = snap.data();
+         setSession(data.session);
+         setRoleSlots(data.roleSlots || []);
+         setJoinedParticipants(data.joinedParticipants || []);
+         setSessionFound(true);
+         setJoinError("");
+      } else {
+         setJoinError(t.sessionNotFound);
+      }
+    } catch (e) {
+      setJoinError("Connection error.");
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!joinName.trim() || !joinRoleSlotId || !db) return;
     const slot = roleSlots.find(r => r.id === joinRoleSlotId);
     if (!slot) return;
+    
     const newParticipant = {
       id: `p-${Date.now()}`, name: joinName, roleSlotId: joinRoleSlotId,
-      role: slot.role, isMock: false, joinedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString()
+      role: slot.role, isMock: false, joinedAt: new Date().toISOString()
     };
+    
+    // Optistic local update
     setJoinedParticipants(prev => [...prev, newParticipant]);
     setCurrentParticipantId(newParticipant.id);
-    logTimelineEvent('PARTICIPANT', `${joinName} joined as ${slot.role}`);
+    
+    // Firebase update
+    try {
+       const snap = await getDoc(getDbRef());
+       const currentList = snap.data()?.joinedParticipants || [];
+       await updateDoc(getDbRef(), { joinedParticipants: [...currentList, newParticipant] });
+    } catch(e) { console.error("Join error", e); }
   };
 
   const handleLeave = () => {
-    const pName = joinedParticipants.find(p=>p.id === currentParticipantId)?.name || 'Participant';
     setJoinedParticipants(prev => prev.filter(p => p.id !== currentParticipantId));
     setCurrentParticipantId(null);
-    setJoinName(""); setJoinRoleSlotId("");
-    logTimelineEvent('PARTICIPANT', `${pName} left the session`);
+    setSessionFound(false);
+    setJoinName(""); setJoinRoleSlotId(""); setJoinSessionId("");
   };
 
   const handleDraftScore = (crit, val) => {
@@ -794,22 +872,32 @@ export default function App() {
     setDraftScores(prev => ({ ...prev, [crit]: val }));
   };
 
-  const submitFeatureScores = () => {
-    if (accessMode === 'participantPreview') return;
+  const submitFeatureScores = async () => {
+    if (accessMode === 'participantPreview' || !db) return;
     if (!draftScores.bv || !draftScores.tc || !draftScores.rr || !draftScores.js) return;
+    
     const featState = featureRoundState[session.activeFeatureId] || {};
     const targetField = featState.status === 'reScoreOpen' ? 'revised' : 'initial';
+    const scoreObj = { ...draftScores, submitted: true, submittedAt: new Date().toISOString() };
     
+    // Optimistic local update
     setParticipantScores(prev => ({
       ...prev,
       [currentParticipantId]: {
         ...(prev[currentParticipantId] || {}),
         [session.activeFeatureId]: {
           ...(prev[currentParticipantId]?.[session.activeFeatureId] || {}),
-          [targetField]: { ...draftScores, submitted: true, submittedAt: new Date().toISOString() }
+          [targetField]: scoreObj
         }
       }
     }));
+
+    // Firebase write
+    try {
+       await updateDoc(getDbRef(), {
+          [`participantScores.${currentParticipantId}.${session.activeFeatureId}.${targetField}`]: scoreObj
+       });
+    } catch(e) { console.error("Submit error", e); }
   };
 
   const handleRoleSetupChange = (id, field, value) => setRoleSlots(prev => prev.map(rs => rs.id === id ? { ...rs, [field]: value } : rs));
@@ -921,7 +1009,7 @@ export default function App() {
 
   const getNextRecommendedAction = () => {
     if (!activeFeatures.length) return { label: "Add Features", act: () => setSetupExpanded(true), bg: 'bg-[#7A89A3]', icon: <AlertCircle className="w-4 h-4 mr-2"/> };
-    if (session.lifecycleStatus === 'draft') return { label: t.btnOpenLobby, act: () => updateSessionState('lobbyOpen'), bg: 'bg-[#5B5FEF]', icon: <Users className="w-4 h-4 mr-2"/> };
+    if (session.lifecycleStatus === 'draft') return { label: t.btnOpenLobby, act: () => handleOpenLobby(), bg: 'bg-[#5B5FEF]', icon: <Users className="w-4 h-4 mr-2"/> };
     if (session.lifecycleStatus === 'lobbyOpen') return { label: t.btnStartSession, act: () => updateSessionState('inProgress'), bg: 'bg-[#12B981]', icon: <PlayCircle className="w-4 h-4 mr-2"/> };
     if (session.lifecycleStatus === 'inProgress') {
         if (activeFeatState.status === 'notStarted') return { label: t.btnStartScoring, act: () => updateFeatureStatus('scoringOpen'), bg: 'bg-[#12B981]', icon: <PlayCircle className="w-4 h-4 mr-2"/> };
@@ -1044,11 +1132,13 @@ export default function App() {
               <span className="text-[#D9E2F0]">|</span>
               <button onClick={() => setLang('bg')} className={`text-xs font-bold transition-colors ${lang === 'bg' ? 'text-[#172033]' : 'text-[#7A89A3] hover:text-[#3366FF]'}`}>BG</button>
             </div>
-            <div className="flex items-center space-x-3 text-xs">
-                <span className="bg-[#F8FAFF] text-[#53627A] px-3 py-1.5 rounded-lg border border-[#D9E2F0] font-mono font-bold shadow-sm">
-                  {session.id}
-                </span>
-             </div>
+            {(accessMode === 'trainerUnlocked' || sessionFound) && (
+              <div className="flex items-center space-x-3 text-xs">
+                  <span className="bg-[#F8FAFF] text-[#53627A] px-3 py-1.5 rounded-lg border border-[#D9E2F0] font-mono font-bold shadow-sm">
+                    {session.id}
+                  </span>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -1074,8 +1164,29 @@ export default function App() {
       {(accessMode === 'participant' || accessMode === 'participantPreview') && (
         <main className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 space-y-6">
             
-            {/* JOIN SCREEN */}
-            {!currentParticipantId && accessMode !== 'participantPreview' && (
+            {/* FIND SESSION SCREEN */}
+            {!sessionFound && !currentParticipantId && accessMode !== 'participantPreview' && (
+              <div className="max-w-md mx-auto bg-white rounded-[24px] shadow-lg border border-[#D9E2F0] overflow-hidden mt-12 animate-in fade-in zoom-in-95">
+                <div className="bg-[#172033] p-8 text-center relative overflow-hidden">
+                  <Search className="w-12 h-12 text-[#3366FF] mx-auto mb-4 relative z-10" />
+                  <h2 className="text-2xl font-black text-white tracking-tight relative z-10">{t.findSessionTitle}</h2>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#3366FF]/20 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                </div>
+                <div className="p-8 space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-[#7A89A3] uppercase tracking-wider mb-2">{t.sessionIdInput}</label>
+                    <input type="text" value={joinSessionId} onChange={e => setJoinSessionId(e.target.value.toUpperCase())} className="w-full p-4 border border-[#D9E2F0] rounded-xl focus:border-[#3366FF] focus:ring-2 focus:ring-[#EEF4FF] outline-none font-mono text-center text-xl text-[#172033] tracking-widest uppercase" placeholder="WSJF-XXXX" />
+                    {joinError && <p className="text-[#EF4444] text-xs font-bold mt-2 text-center">{joinError}</p>}
+                  </div>
+                  <button onClick={findSession} disabled={!joinSessionId.trim() || !db} className="w-full bg-[#3366FF] hover:bg-[#254EDBE6] disabled:bg-[#D9E2F0] text-white font-bold py-4 px-4 rounded-xl transition-colors shadow-md mt-2 flex justify-center items-center">
+                    {t.btnFindSession} <ChevronRight className="w-5 h-5 ml-2"/>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* JOIN SCREEN (After session is found) */}
+            {sessionFound && !currentParticipantId && accessMode !== 'participantPreview' && (
               <div className="max-w-md mx-auto bg-white rounded-[24px] shadow-lg border border-[#D9E2F0] overflow-hidden mt-12 animate-in fade-in zoom-in-95">
                 <div className="bg-[#3366FF] p-8 text-center relative overflow-hidden">
                   <Calculator className="w-12 h-12 text-white mx-auto mb-4 relative z-10" />
@@ -1261,7 +1372,7 @@ export default function App() {
             )}
 
             {/* TRAINER ACCESS LINK (AVAILABLE ANYTIME) */}
-            {accessMode === 'participant' && (
+            {(!currentParticipantId && accessMode === 'participant') && (
                <div className="text-center pt-8 pb-4">
                   <button onClick={() => setAccessMode('trainerLocked')} className="text-xs font-bold text-[#A0ABBF] hover:text-[#5B5FEF] uppercase tracking-wider transition-colors flex items-center justify-center mx-auto">
                      <Shield className="w-3.5 h-3.5 mr-1.5"/> {t.trainerAccessLink}
@@ -1293,9 +1404,9 @@ export default function App() {
                     <Users className="w-3.5 h-3.5 text-[#7A89A3] mr-1.5"/> 
                     <span className="text-[#172033]">{joinedParticipants.length}</span>
                   </div>
-                  {session.demoMode && (
-                    <div className="flex items-center bg-[#FEF3C7] text-[#D97706] px-2 py-1 rounded text-[10px] uppercase border border-[#FDE68A]">
-                      Demo Mode
+                  {!db && (
+                    <div className="flex items-center bg-[#FEF2F2] text-[#EF4444] px-2 py-1 rounded text-[10px] uppercase border border-[#FECACA] font-bold">
+                      Firebase Offline
                     </div>
                   )}
                </div>
@@ -1798,12 +1909,12 @@ export default function App() {
                         <div className="max-w-xl">
                            <h3 className="text-lg font-black text-[#172033] mb-6">{t.tabSettings}</h3>
                            <div className="space-y-6">
-                              <div className="p-5 border border-[#D9E2F0] rounded-xl bg-[#F8FAFF]">
+                              <div className="p-5 border border-[#D9E2F0] rounded-xl bg-[#F8FAFF] opacity-50">
                                 <div className="flex items-center">
-                                  <input type="checkbox" id="demoMode" checked={session.demoMode} onChange={e => setSession(prev=>({...prev, demoMode: e.target.checked}))} className="w-5 h-5 rounded border-[#D9E2F0] text-[#3366FF] focus:ring-[#3366FF] cursor-pointer" />
-                                  <label htmlFor="demoMode" className="ml-3 text-sm font-bold text-[#172033] cursor-pointer">{t.demoModeLabel}</label>
+                                  <input type="checkbox" id="demoMode" disabled checked={session.demoMode} onChange={e => setSession(prev=>({...prev, demoMode: e.target.checked}))} className="w-5 h-5 rounded border-[#D9E2F0] text-[#3366FF] focus:ring-[#3366FF]" />
+                                  <label htmlFor="demoMode" className="ml-3 text-sm font-bold text-[#172033]">Local Demo Mode (Disabled)</label>
                                 </div>
-                                <p className="mt-2 text-xs text-[#53627A] ml-8">Uses generated mock participants and role-based mock scores for trainer demos.</p>
+                                <p className="mt-2 text-xs text-[#53627A] ml-8">Disabled while connected to Live Firebase Multiplayer.</p>
                               </div>
 
                               <div className="p-5 border border-[#D9E2F0] rounded-xl bg-white">
