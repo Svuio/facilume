@@ -144,6 +144,12 @@ const translations = {
     unlockTrainer: "Unlock Trainer View",
     incorrectPin: "Incorrect Trainer PIN.",
     backToParticipant: "Back to Participant Join",
+    
+    trainerSessionTitle: "Manage Sessions",
+    trainerSessionInput: "Enter existing Session ID",
+    btnLoadSession: "Load Session",
+    btnCreateSession: "Create New Session",
+    trainerSessionError: "Session not found in database.",
 
     tabScenario: "Scenario Builder",
     tabRoles: "Role Setup",
@@ -313,6 +319,12 @@ const translations = {
     unlockTrainer: "Отключи",
     incorrectPin: "Грешен PIN.",
     backToParticipant: "Обратно към лоби",
+    
+    trainerSessionTitle: "Управление на сесии",
+    trainerSessionInput: "Въведи съществуващо ID на сесия",
+    btnLoadSession: "Зареди сесия",
+    btnCreateSession: "Създай нова сесия",
+    trainerSessionError: "Сесията не е намерена в базата данни.",
 
     tabScenario: "Редактор на сценарии",
     tabRoles: "Настройка на роли",
@@ -415,7 +427,7 @@ const snapToScale = (val) => fibonacciScale.reduce((prev, curr) => Math.abs(curr
 
 export default function App() {
   const [lang, setLang] = useState('en');
-  const [accessMode, setAccessMode] = useState('participant'); 
+  const [accessMode, setAccessMode] = useState('participant'); // participant, trainerLocked, trainerSessionSelect, trainerUnlocked
   const [trainerPinInput, setTrainerPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
   const trainerPin = "0000"; 
@@ -460,13 +472,9 @@ export default function App() {
   const activeFeatures = useMemo(() => activeScenario.features || [], [activeScenario]);
 
   // SESSION STATE
-  const [session, setSession] = useState({
-    id: `WSJF-${Math.floor(Math.random() * 9000) + 1000}`,
-    lifecycleStatus: 'draft', 
-    activeFeatureId: activeFeatures[0]?.id || 1,
-    capacity: 30,
-    demoMode: false,
-  });
+  const [session, setSession] = useState(null);
+  const [trainerLoadSessionId, setTrainerLoadSessionId] = useState("");
+  const [trainerSessionError, setTrainerSessionError] = useState("");
 
   const [featureRoundState, setFeatureRoundState] = useState(() => {
     return activeFeatures.reduce((acc, curr) => {
@@ -499,7 +507,7 @@ export default function App() {
   const [expandedDetailsId, setExpandedDetailsId] = useState(null);
   const [showFeatureDetails, setShowFeatureDetails] = useState(false);
 
-  const getDbRef = useCallback((sId) => doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId || session.id), [session.id]);
+  const getDbRef = useCallback((sId) => doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId || (session?.id || 'default')), [session?.id]);
 
   const logTimelineEvent = useCallback((type, desc, featureId = null) => {
     setSessionTimeline(prev => [
@@ -522,7 +530,7 @@ export default function App() {
 
   // FIREBASE REAL-TIME LISTENER
   useEffect(() => {
-    if (!authUser || !db || session.lifecycleStatus === 'draft') return;
+    if (!authUser || !db || !session || session.lifecycleStatus === 'draft') return;
     if (accessMode === 'participant' && !sessionFound) return;
 
     const ref = getDbRef();
@@ -544,11 +552,11 @@ export default function App() {
       }
     }, (err) => console.error("Sync error", err));
     return () => unsub();
-  }, [authUser, session.id, session.lifecycleStatus, accessMode, sessionFound, getDbRef]);
+  }, [authUser, session?.id, session?.lifecycleStatus, accessMode, sessionFound, getDbRef]);
 
   // FIREBASE TRAINER STATE PUSH
   useEffect(() => {
-    if (accessMode === 'trainerUnlocked' && session.lifecycleStatus !== 'draft' && db) {
+    if (accessMode === 'trainerUnlocked' && session && session.lifecycleStatus !== 'draft' && db) {
       const pushState = async () => {
         try {
           await setDoc(getDbRef(), {
@@ -562,7 +570,7 @@ export default function App() {
 
   // Sync Draft Scores
   useEffect(() => {
-    if (!currentParticipantId || accessMode === 'participantPreview') return;
+    if (!currentParticipantId || accessMode === 'participantPreview' || !session) return;
     const scores = participantScores[currentParticipantId]?.[session.activeFeatureId];
     const featState = featureRoundState[session.activeFeatureId] || {};
     if (featState.status === 'scoringOpen') {
@@ -575,11 +583,11 @@ export default function App() {
     } else {
        setDraftScores({ bv: null, tc: null, rr: null, js: null });
     }
-  }, [session.activeFeatureId, featureRoundState, currentParticipantId, participantScores, accessMode]);
+  }, [session?.activeFeatureId, featureRoundState, currentParticipantId, participantScores, accessMode, session]);
 
   // SCENARIO MANAGEMENT
   const requestScenarioChange = (newId) => {
-     if (session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') {
+     if (session?.lifecycleStatus === 'inProgress' || session?.lifecycleStatus === 'debrief') {
         setShowScenarioChangeConfirm(newId);
      } else {
         executeScenarioChange(newId);
@@ -614,7 +622,7 @@ export default function App() {
      };
      setCustomScenarios(prev => [...prev, duplicated]);
      
-     if (session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') {
+     if (session?.lifecycleStatus === 'inProgress' || session?.lifecycleStatus === 'debrief') {
         setShowScenarioChangeConfirm(newId);
      } else {
         executeScenarioChange(newId, duplicated);
@@ -636,7 +644,7 @@ export default function App() {
      };
      setCustomScenarios(prev => [...prev, newScen]);
      
-     if (session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') {
+     if (session?.lifecycleStatus === 'inProgress' || session?.lifecycleStatus === 'debrief') {
         setShowScenarioChangeConfirm(newId);
      } else {
         executeScenarioChange(newId, newScen);
@@ -680,13 +688,48 @@ export default function App() {
   // ACTIONS
   const handleTrainerLogin = () => {
     if (trainerPinInput === trainerPin) {
-      setAccessMode('trainerUnlocked');
+      setAccessMode('trainerSessionSelect');
       setPinError(false);
       setTrainerPinInput("");
-      logTimelineEvent('ACCESS', 'Trainer logged in');
     } else {
       setPinError(true);
     }
+  };
+
+  const createNewSession = () => {
+     setSession({
+        id: `WSJF-${Math.floor(Math.random() * 9000) + 1000}`,
+        lifecycleStatus: 'draft', 
+        activeFeatureId: activeFeatures[0]?.id || 1,
+        capacity: 30,
+        demoMode: false,
+     });
+     setAccessMode('trainerUnlocked');
+     logTimelineEvent('ACCESS', 'Trainer created new session');
+  };
+
+  const loadExistingSession = async () => {
+     if(!trainerLoadSessionId.trim() || !db) return;
+     try {
+        const snap = await getDoc(getDbRef(trainerLoadSessionId.toUpperCase()));
+        if (snap.exists()) {
+           const data = snap.data();
+           setSession(data.session);
+           if(data.activeScenarioId) setActiveScenarioId(data.activeScenarioId);
+           if(data.featureRoundState) setFeatureRoundState(data.featureRoundState);
+           if(data.roleSlots) setRoleSlots(data.roleSlots);
+           if(data.joinedParticipants) setJoinedParticipants(data.joinedParticipants);
+           if(data.participantScores) setParticipantScores(data.participantScores);
+           
+           setAccessMode('trainerUnlocked');
+           setTrainerSessionError("");
+           logTimelineEvent('ACCESS', 'Trainer loaded existing session');
+        } else {
+           setTrainerSessionError(t.trainerSessionError);
+        }
+     } catch (e) {
+        setTrainerSessionError("Connection error.");
+     }
   };
 
   const getActiveScore = useCallback((pId, fId) => {
@@ -735,18 +778,18 @@ export default function App() {
     processed = processed.map((item, index) => {
       const js = Number(item.js) || 0;
       let included = false;
-      if (usedCap + js <= session.capacity) { included = true; usedCap += js; }
+      if (session && usedCap + js <= session.capacity) { included = true; usedCap += js; }
       return { ...item, rank: index + 1, included };
     });
     return processed;
-  }, [calcCriterionStats, session.capacity, activeFeatures]);
+  }, [calcCriterionStats, session?.capacity, activeFeatures, session]);
 
   const handleOpenLobby = async () => {
     const newState = 'lobbyOpen';
     setSession(prev => ({ ...prev, lifecycleStatus: newState }));
     logTimelineEvent('SESSION', `Status changed to ${newState}`);
     
-    if (db) {
+    if (db && session) {
        try {
           await setDoc(getDbRef(), {
              session: { ...session, lifecycleStatus: newState },
@@ -766,7 +809,7 @@ export default function App() {
   };
 
   const updateFeatureStatus = (statusUpdate) => {
-     if (!activeFeatures.length) return;
+     if (!activeFeatures.length || !session) return;
      setFeatureRoundState(prev => {
         const next = { ...prev };
         next[session.activeFeatureId] = { 
@@ -783,7 +826,7 @@ export default function App() {
   };
 
   const changeFeature = (dir) => {
-    if (!activeFeatures.length) return;
+    if (!activeFeatures.length || !session) return;
     const currentIndex = activeFeatures.findIndex(i => i.id === session.activeFeatureId);
     let nextIndex = currentIndex + dir;
     if (nextIndex < 0) nextIndex = 0;
@@ -795,6 +838,7 @@ export default function App() {
   };
 
   const executeResetFeatureRound = async () => {
+    if(!session) return;
     const newScores = { ...participantScores };
     Object.keys(newScores).forEach(pId => {
       if (newScores[pId][session.activeFeatureId]) {
@@ -870,14 +914,14 @@ export default function App() {
   };
 
   const handleDraftScore = (crit, val) => {
-    if (accessMode === 'participantPreview') return;
+    if (accessMode === 'participantPreview' || !session) return;
     const featState = featureRoundState[session.activeFeatureId] || {};
     if (featState.status === 'votingLocked' || featState.status === 'discussion' || featState.status === 'completed' || session.lifecycleStatus === 'ended') return;
     setDraftScores(prev => ({ ...prev, [crit]: val }));
   };
 
   const submitFeatureScores = async () => {
-    if (accessMode === 'participantPreview' || !db) return;
+    if (accessMode === 'participantPreview' || !db || !session) return;
     if (!draftScores.bv || !draftScores.tc || !draftScores.rr || !draftScores.js) return;
     
     const featState = featureRoundState[session.activeFeatureId] || {};
@@ -910,7 +954,7 @@ export default function App() {
 
   // Prompts Generation
   const generatePromptsEngine = useCallback(() => {
-    if (!activeFeatures.length) return;
+    if (!activeFeatures.length || !session) return;
     const currentItem = activeFeatures.find(i => i.id === session.activeFeatureId);
     if (!currentItem) return;
 
@@ -970,19 +1014,19 @@ export default function App() {
     }
 
     setAiPrompts(newPrompts);
-  }, [session.activeFeatureId, session.lifecycleStatus, featureRoundState, joinedParticipants, calcCriterionStats, getActiveScore, lang, t, activeFeatures]);
+  }, [session?.activeFeatureId, session?.lifecycleStatus, featureRoundState, joinedParticipants, calcCriterionStats, getActiveScore, lang, t, activeFeatures, session]);
 
   useEffect(() => {
     generatePromptsEngine();
-  }, [session.activeFeatureId, featureRoundState, generatePromptsEngine]);
+  }, [session?.activeFeatureId, featureRoundState, generatePromptsEngine, session]);
 
-  const activeFeatureData = activeFeatures.find(i => i.id === session.activeFeatureId) || activeFeatures[0];
+  const activeFeatureData = activeFeatures.find(i => i.id === session?.activeFeatureId) || activeFeatures[0];
   const activeFeatureTitle = activeFeatureData ? (lang === 'en' ? activeFeatureData.title_en : activeFeatureData.title_bg) : "No feature selected";
-  const activeFeatState = featureRoundState[session.activeFeatureId] || {};
-  const areResultsRevealed = activeFeatState.resultsRevealed || session.lifecycleStatus === 'ended';
-  const isVotingLocked = ['votingLocked', 'resultsRevealed', 'discussion', 'completed'].includes(activeFeatState.status) || session.lifecycleStatus === 'debrief' || session.lifecycleStatus === 'lobbyOpen' || session.lifecycleStatus === 'draft' || session.lifecycleStatus === 'ended';
+  const activeFeatState = session ? (featureRoundState[session.activeFeatureId] || {}) : {};
+  const areResultsRevealed = activeFeatState.resultsRevealed || session?.lifecycleStatus === 'ended';
+  const isVotingLocked = ['votingLocked', 'resultsRevealed', 'discussion', 'completed'].includes(activeFeatState.status) || session?.lifecycleStatus === 'debrief' || session?.lifecycleStatus === 'lobbyOpen' || session?.lifecycleStatus === 'draft' || session?.lifecycleStatus === 'ended';
 
-  const activeItemStats = activeFeatureData ? {
+  const activeItemStats = activeFeatureData && session ? {
     bv: calcCriterionStats(session.activeFeatureId, 'bv'), tc: calcCriterionStats(session.activeFeatureId, 'tc'),
     rr: calcCriterionStats(session.activeFeatureId, 'rr'), js: calcCriterionStats(session.activeFeatureId, 'js')
   } : { bv:{avg:0,spread:0}, tc:{avg:0,spread:0}, rr:{avg:0,spread:0}, js:{avg:0,spread:0} };
@@ -1012,6 +1056,7 @@ export default function App() {
   };
 
   const getNextRecommendedAction = () => {
+    if (!session) return { label: "", act: () => {}, bg: '', icon: null };
     if (!activeFeatures.length) return { label: "Add Features", act: () => setSetupExpanded(true), bg: 'bg-[#7A89A3]', icon: <AlertCircle className="w-4 h-4 mr-2"/> };
     if (session.lifecycleStatus === 'draft') return { label: t.btnOpenLobby, act: () => handleOpenLobby(), bg: 'bg-[#5B5FEF]', icon: <Users className="w-4 h-4 mr-2"/> };
     if (session.lifecycleStatus === 'lobbyOpen') return { label: t.btnStartSession, act: () => updateSessionState('inProgress'), bg: 'bg-[#12B981]', icon: <PlayCircle className="w-4 h-4 mr-2"/> };
@@ -1029,7 +1074,7 @@ export default function App() {
   const primaryAction = getNextRecommendedAction();
 
   const myCurrentParticipant = joinedParticipants.find(p => p.id === currentParticipantId);
-  const myVoteState = getActiveScore(currentParticipantId, session.activeFeatureId);
+  const myVoteState = session ? getActiveScore(currentParticipantId, session.activeFeatureId) : null;
   const hasSubmittedActive = myVoteState?.submitted;
 
   const renderPokerRow = (criterion, label) => {
@@ -1079,7 +1124,7 @@ export default function App() {
                <div>
                   <h3 className="text-[#991B1B] font-bold text-sm">Грешка при свързване с Firebase</h3>
                   <p className="text-[#B91C1C] text-xs mt-1">{fbErrorState}</p>
-                  <p className="text-[#991B1B] text-xs mt-2 font-medium">Проверете обекта <code className="bg-[#FECACA] px-1 py-0.5 rounded">userFirebaseConfig</code> в кода. Възможно е да липсва запетая, кавичка или ключовете да са невалидни.</p>
+                  <p className="text-[#991B1B] text-xs mt-2 font-medium">Проверете обекта <code className="bg-[#FECACA] px-1 py-0.5 rounded">userFirebaseConfig</code> в кода.</p>
                </div>
             </div>
          </div>
@@ -1139,7 +1184,7 @@ export default function App() {
         )}
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Calculator className={`w-7 h-7 ${accessMode === 'trainerUnlocked' ? 'text-[#5B5FEF]' : 'text-[#3366FF]'}`} />
+            <Calculator className={`w-7 h-7 ${(accessMode === 'trainerUnlocked' || accessMode === 'trainerSessionSelect') ? 'text-[#5B5FEF]' : 'text-[#3366FF]'}`} />
             <div>
               <h1 className="text-lg font-black leading-tight tracking-tight">{t.appTitle}</h1>
               <p className="text-[10px] text-[#7A89A3] font-bold uppercase tracking-wider hidden sm:block">Facilitation Cockpit</p>
@@ -1152,7 +1197,7 @@ export default function App() {
               <span className="text-[#D9E2F0]">|</span>
               <button onClick={() => setLang('bg')} className={`text-xs font-bold transition-colors ${lang === 'bg' ? 'text-[#172033]' : 'text-[#7A89A3] hover:text-[#3366FF]'}`}>BG</button>
             </div>
-            {(accessMode === 'trainerUnlocked' || sessionFound) && (
+            {((accessMode === 'trainerUnlocked' || sessionFound) && session) && (
               <div className="flex items-center space-x-3 text-xs">
                   <span className="bg-[#F8FAFF] text-[#53627A] px-3 py-1.5 rounded-lg border border-[#D9E2F0] font-mono font-bold shadow-sm">
                     {session.id}
@@ -1177,6 +1222,34 @@ export default function App() {
               </div>
               <button onClick={handleTrainerLogin} className="w-full bg-[#5B5FEF] hover:bg-[#4F46E5] text-white font-bold py-4 px-4 rounded-xl transition-colors shadow-md mb-4">{t.unlockTrainer}</button>
               <button onClick={() => setAccessMode('participant')} className="text-xs font-bold text-[#7A89A3] hover:text-[#172033] transition-colors">{t.backToParticipant}</button>
+           </div>
+        </div>
+      )}
+
+      {/* NEW: TRAINER SESSION SELECTION */}
+      {accessMode === 'trainerSessionSelect' && (
+        <div className="min-h-[80vh] flex items-center justify-center p-4">
+           <div className="bg-white rounded-[24px] shadow-xl border border-[#D9E2F0] p-10 max-w-md w-full text-center">
+              <Settings className="w-12 h-12 text-[#5B5FEF] mx-auto mb-4" />
+              <h2 className="text-2xl font-black text-[#172033] mb-2">{t.trainerSessionTitle}</h2>
+              <p className="text-[#53627A] text-sm mb-8">Create a new workshop session or load an existing one from the database.</p>
+              
+              <div className="bg-[#F8FAFF] p-6 rounded-xl border border-[#D9E2F0] mb-6">
+                 <label className="block text-xs font-bold text-[#7A89A3] uppercase tracking-wider mb-2 text-left">{t.trainerSessionInput}</label>
+                 <input type="text" value={trainerLoadSessionId} onChange={e => setTrainerLoadSessionId(e.target.value.toUpperCase())} className="w-full p-4 border border-[#D9E2F0] rounded-xl focus:border-[#5B5FEF] focus:ring-2 focus:ring-[#EEF4FF] outline-none transition-all font-mono text-xl text-center tracking-widest uppercase mb-4" placeholder="WSJF-XXXX" />
+                 <button onClick={loadExistingSession} disabled={!trainerLoadSessionId.trim()} className="w-full bg-[#172033] hover:bg-[#5B5FEF] disabled:bg-[#D9E2F0] disabled:text-[#A0ABBF] text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-sm">{t.btnLoadSession}</button>
+                 {trainerSessionError && <p className="text-[#EF4444] text-xs font-bold mt-3">{trainerSessionError}</p>}
+              </div>
+
+              <div className="relative flex items-center py-5">
+                 <div className="flex-grow border-t border-[#D9E2F0]"></div>
+                 <span className="flex-shrink-0 mx-4 text-[#A0ABBF] text-xs font-bold uppercase tracking-wider">OR</span>
+                 <div className="flex-grow border-t border-[#D9E2F0]"></div>
+              </div>
+
+              <button onClick={createNewSession} className="w-full bg-white border-2 border-[#5B5FEF] text-[#5B5FEF] hover:bg-[#EEF4FF] font-bold py-4 px-4 rounded-xl transition-colors shadow-sm flex items-center justify-center">
+                 <Plus className="w-5 h-5 mr-2" /> {t.btnCreateSession}
+              </button>
            </div>
         </div>
       )}
@@ -1206,7 +1279,7 @@ export default function App() {
             )}
 
             {/* JOIN SCREEN (After session is found) */}
-            {sessionFound && !currentParticipantId && accessMode !== 'participantPreview' && (
+            {sessionFound && !currentParticipantId && accessMode !== 'participantPreview' && session && (
               <div className="max-w-md mx-auto bg-white rounded-[24px] shadow-lg border border-[#D9E2F0] overflow-hidden mt-12 animate-in fade-in zoom-in-95">
                 <div className="bg-[#3366FF] p-8 text-center relative overflow-hidden">
                   <Calculator className="w-12 h-12 text-white mx-auto mb-4 relative z-10" />
@@ -1239,7 +1312,7 @@ export default function App() {
             )}
 
             {/* JOINED WORKSPACE */}
-            {(currentParticipantId || accessMode === 'participantPreview') && (
+            {(currentParticipantId || accessMode === 'participantPreview') && session && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-[#D9E2F0] mb-6">
                    <div className="flex items-center">
@@ -1406,7 +1479,7 @@ export default function App() {
         {/* =====================================================================
             TRAINER UNLOCKED VIEW
         ====================================================================== */}
-        {accessMode === 'trainerUnlocked' && (
+        {(accessMode === 'trainerUnlocked' && session) && (
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-500">
             
             {/* SUMMARY BAR */}
@@ -1439,8 +1512,8 @@ export default function App() {
                  <button onClick={() => setAccessMode('participantPreview')} className="text-[10px] font-bold text-[#5B5FEF] uppercase tracking-wider hover:underline flex items-center">
                     <Eye className="w-3.5 h-3.5 mr-1.5"/> {t.previewPart}
                  </button>
-                 <button onClick={() => setAccessMode('trainerLocked')} className="text-[10px] font-bold text-[#7A89A3] hover:text-[#172033] uppercase tracking-wider flex items-center ml-2">
-                    <Lock className="w-3.5 h-3.5 mr-1.5"/> {t.lockTrainer}
+                 <button onClick={() => setAccessMode('trainerSessionSelect')} className="text-[10px] font-bold text-[#7A89A3] hover:text-[#172033] uppercase tracking-wider flex items-center ml-2">
+                    <Settings className="w-3.5 h-3.5 mr-1.5"/> Session Menu
                  </button>
                </div>
             </div>
