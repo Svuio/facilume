@@ -16,25 +16,29 @@ import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc } from 'fireba
 
 // 🔴 ВАЖНО: ЗАМЕСТИ ТЕЗИ СТОЙНОСТИ С ТВОИТЕ ОТ FIREBASE КОНЗОЛАТА! 🔴
 const userFirebaseConfig = {
-  aapiKey: "AIzaSyC7AFoL5wZhxceS8XxZ_06rmBMJCGRjKT0",
+  const firebaseConfig = {
+  apiKey: "AIzaSyC7AFoL5wZhxceS8XxZ_06rmBMJCGRjKT0",
   authDomain: "facilume.firebaseapp.com",
   projectId: "facilume",
   storageBucket: "facilume.firebasestorage.app",
   messagingSenderId: "969775767462",
-  appId: "1:969775767462:web:2d4b53fd26c1f187f93967",
-  measurementId: "G-DLHVG45W0J"
+  appId: "1:969775767462:web:2d4b53fd26c1f187f93967"
 };
 
 // Защита: Ако сме в Canvas среда използваме глобалния config, иначе твоя (за Vercel).
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'facilume-wsjf';
 
-let app, auth, db;
+let app, auth, db, firebaseInitError = null;
 try {
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "ВЪВЕДИ_ТУК") {
+     throw new Error("Липсват Firebase конфигурационни ключове. Моля, попълнете userFirebaseConfig.");
+  }
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
 } catch (e) {
+  firebaseInitError = e.message;
   console.error("Firebase init error:", e);
 }
 // ==========================
@@ -1062,9 +1066,25 @@ export default function App() {
     );
   };
 
+  const [fbErrorState] = useState(firebaseInitError);
+
   return (
     <div className="min-h-screen bg-[#EEF3FB] font-sans text-[#172033] pb-20 selection:bg-[#3366FF] selection:text-white">
       
+      {/* ERROR BANNER */}
+      {fbErrorState && (
+         <div className="max-w-[1440px] mx-auto pt-6 px-4 sm:px-6 lg:px-8">
+            <div className="bg-[#FEF2F2] border-l-4 border-[#EF4444] p-4 rounded-r-xl shadow-sm flex items-start">
+               <AlertTriangle className="w-6 h-6 text-[#EF4444] mr-3 shrink-0" />
+               <div>
+                  <h3 className="text-[#991B1B] font-bold text-sm">Грешка при свързване с Firebase</h3>
+                  <p className="text-[#B91C1C] text-xs mt-1">{fbErrorState}</p>
+                  <p className="text-[#991B1B] text-xs mt-2 font-medium">Проверете обекта <code className="bg-[#FECACA] px-1 py-0.5 rounded">userFirebaseConfig</code> в кода. Възможно е да липсва запетая, кавичка или ключовете да са невалидни.</p>
+               </div>
+            </div>
+         </div>
+      )}
+
       {/* MODALS */}
       {showEndSessionModal && (
         <div className="fixed inset-0 bg-[#0C1222]/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
