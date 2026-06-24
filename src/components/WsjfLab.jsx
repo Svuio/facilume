@@ -6,7 +6,7 @@ import {
   Lock, Unlock, Eye, EyeOff, PlayCircle, RotateCcw, 
   ChevronLeft, ChevronRight, ChevronDown, CheckSquare, Edit3, Activity,
   UserPlus, UserMinus, RefreshCw, Filter, Link, Copy, LogOut, Check, Bug, Shield, Clock,
-  FileText, Plus, Save, Download, Upload, Trash2, Copy as CopyIcon, Search
+  FileText, Plus, Save, Download, Upload, Trash2, Copy as CopyIcon, Search, Share2, CheckCheck
 } from 'lucide-react';
 
 // === FIREBASE ИНТЕГРАЦИЯ ===
@@ -137,6 +137,13 @@ const translations = {
     helperTc: "How much does value decay if this is delayed?",
     helperRr: "What risk does this reduce or opportunity enable?",
     helperJs: "How large is the effort compared to other features?",
+
+    btnShare: "Share Session",
+    shareTitle: "Invite Participants",
+    shareLink: "Session Link",
+    btnCopy: "Copy",
+    btnCopied: "Copied!",
+    scanQr: "Or scan QR code to join:",
     
     trainerAccessTitle: "Trainer Access",
     trainerAccessSub: "Enter PIN to access the facilitation cockpit.",
@@ -312,6 +319,13 @@ const translations = {
     helperTc: "Колко намалява стойността, ако се забави?",
     helperRr: "Какъв риск намалява или възможност отключва?",
     helperJs: "Колко голямо е усилието спрямо останалите?",
+
+    btnShare: "Сподели сесия",
+    shareTitle: "Покани участници",
+    shareLink: "Линк за достъп",
+    btnCopy: "Копирай",
+    btnCopied: "Копирано!",
+    scanQr: "Или сканирай QR кода:",
     
     trainerAccessTitle: "Достъп за тренера",
     trainerAccessSub: "Въведете PIN за достъп.",
@@ -507,6 +521,9 @@ export default function App() {
   const [expandedDetailsId, setExpandedDetailsId] = useState(null);
   const [showFeatureDetails, setShowFeatureDetails] = useState(false);
 
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
   const getDbRef = useCallback((sId) => doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId || (session?.id || 'default')), [session?.id]);
 
   const logTimelineEvent = useCallback((type, desc, featureId = null) => {
@@ -515,6 +532,32 @@ export default function App() {
       ...prev
     ]);
   }, []);
+
+  // AUTO-JOIN ОТ ЛИНК
+  useEffect(() => {
+    const autoConnect = async () => {
+      if (typeof window === 'undefined') return;
+      const match = window.location.href.match(/(WSJF-\d{4})/i);
+      if (match && db && !sessionFound && accessMode === 'participant' && !currentParticipantId) {
+        const sId = match[1].toUpperCase();
+        setJoinSessionId(sId);
+        try {
+          const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId));
+          if (snap.exists()) {
+             const data = snap.data();
+             setSession(data.session);
+             setRoleSlots(data.roleSlots || []);
+             setJoinedParticipants(data.joinedParticipants || []);
+             setSessionFound(true);
+             setJoinError("");
+          }
+        } catch (e) {
+           console.error("Auto-connect error:", e);
+        }
+      }
+    };
+    autoConnect();
+  }, [db, sessionFound, accessMode, currentParticipantId]);
 
   // Sync Features round state when scenario changes (Local Trainer)
   useEffect(() => {
@@ -865,6 +908,13 @@ export default function App() {
      setShowEndSessionModal(false);
   };
 
+  const handleCopyShareLink = () => {
+     const shareUrl = `${window.location.origin}${window.location.pathname}?session=${session.id}`;
+     navigator.clipboard.writeText(shareUrl);
+     setIsCopied(true);
+     setTimeout(() => setIsCopied(false), 2000);
+  };
+
   const findSession = async () => {
     if (!joinSessionId.trim() || !db) return;
     try {
@@ -1128,6 +1178,31 @@ export default function App() {
                </div>
             </div>
          </div>
+      )}
+
+      {/* SHARE MODAL */}
+      {showShareModal && session && (
+        <div className="fixed inset-0 bg-[#0C1222]/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+           <div className="bg-white rounded-[24px] shadow-xl p-8 max-w-sm w-full border border-[#D9E2F0] text-center">
+              <div className="flex justify-end mb-2">
+                 <button onClick={() => setShowShareModal(false)} className="text-[#A0ABBF] hover:text-[#172033]"><XCircle className="w-6 h-6" /></button>
+              </div>
+              <h2 className="text-2xl font-black text-[#172033] mb-6">{t.shareTitle}</h2>
+              
+              <div className="bg-[#F8FAFF] p-4 rounded-xl border border-[#D9E2F0] mb-6 flex items-center justify-between">
+                 <span className="font-mono text-sm text-[#53627A] truncate mr-3">{`${window.location.origin}${window.location.pathname}?session=${session.id}`}</span>
+                 <button onClick={handleCopyShareLink} className="shrink-0 flex items-center px-3 py-1.5 bg-[#EEF4FF] hover:bg-[#D9E2F0] text-[#3366FF] rounded-lg text-xs font-bold uppercase transition-colors">
+                    {isCopied ? <CheckCheck className="w-4 h-4 mr-1.5" /> : <CopyIcon className="w-4 h-4 mr-1.5" />}
+                    {isCopied ? t.btnCopied : t.btnCopy}
+                 </button>
+              </div>
+
+              <p className="text-xs font-bold text-[#7A89A3] uppercase tracking-wider mb-4">{t.scanQr}</p>
+              <div className="flex justify-center p-4 bg-white border-2 border-[#F4F7FC] rounded-2xl inline-block mx-auto">
+                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}?session=${session.id}`)}&margin=0`} alt="QR Code" className="w-40 h-40" />
+              </div>
+           </div>
+        </div>
       )}
 
       {/* MODALS */}
@@ -1509,7 +1584,10 @@ export default function App() {
                     {primaryAction.icon} {primaryAction.label}
                  </button>
                  <div className="w-px h-4 bg-[#D9E2F0] mx-1"></div>
-                 <button onClick={() => setAccessMode('participantPreview')} className="text-[10px] font-bold text-[#5B5FEF] uppercase tracking-wider hover:underline flex items-center">
+                 <button onClick={() => setShowShareModal(true)} className="text-[10px] font-bold text-[#3366FF] bg-[#EEF4FF] border border-[#C6D4EA] px-3 py-1.5 rounded-lg hover:bg-[#D9E2F0] uppercase tracking-wider flex items-center transition-colors">
+                    <Share2 className="w-3.5 h-3.5 mr-1.5"/> {t.btnShare}
+                 </button>
+                 <button onClick={() => setAccessMode('participantPreview')} className="text-[10px] font-bold text-[#5B5FEF] uppercase tracking-wider hover:underline flex items-center ml-2">
                     <Eye className="w-3.5 h-3.5 mr-1.5"/> {t.previewPart}
                  </button>
                  <button onClick={() => setAccessMode('trainerSessionSelect')} className="text-[10px] font-bold text-[#7A89A3] hover:text-[#172033] uppercase tracking-wider flex items-center ml-2">
