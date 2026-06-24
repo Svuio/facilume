@@ -14,7 +14,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 
-// 🔴 Твоите реални ключове за facilume 🔴
 const userFirebaseConfig = {
   apiKey: "AIzaSyC7AFoL5wZhxceS8XxZ_06rmBMJCGRjKT0",
   authDomain: "facilume.firebaseapp.com",
@@ -25,7 +24,6 @@ const userFirebaseConfig = {
   measurementId: "G-DLHVG45W0J"
 };
 
-// Защита: Ако сме в Canvas среда използваме глобалния config, иначе твоя (за Vercel).
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'facilume-wsjf';
 
@@ -41,13 +39,12 @@ try {
   firebaseInitError = e.message;
   console.error("Firebase init error:", e);
 }
-// ==========================
 
 const translations = {
   en: {
     appTitle: "WSJF Lab",
     appSubtitle: "A training simulator for prioritization under uncertainty",
-    partInstructions: "Score each feature using WSJF. Focus on relative value, urgency, risk reduction, opportunity enablement, and effort. Do not try to be perfect. Try to be economically honest.",
+    partInstructions: "Score each feature using WSJF. Focus on relative value, urgency, risk reduction, opportunity enablement, and effort.",
     colId: "ID",
     colFeature: "Feature",
     colBV: "Business Value",
@@ -137,27 +134,30 @@ const translations = {
     helperTc: "How much does value decay if this is delayed?",
     helperRr: "What risk does this reduce or opportunity enable?",
     helperJs: "How large is the effort compared to other features?",
-
+    summaryTitle: "Session Complete",
+    summarySubtitle: "Final Prioritized Backlog & Value Analysis",
+    btnExportCsv: "Export to CSV",
+    quickWins: "Quick Wins",
+    majorProjects: "Major Projects",
+    fillIns: "Fill-ins",
+    thanklessTasks: "Time Sinks",
+    valueEffortMatrix: "Value vs. Effort Matrix",
+    totalValue: "Total Value (CoD)",
+    topFeature: "Top Feature",
+    matrixEffort: "Effort (Job Size)",
+    matrixValue: "Value (Cost of Delay)",
     btnShare: "Share Session",
     shareTitle: "Invite Participants",
     shareLink: "Session Link",
     btnCopy: "Copy",
     btnCopied: "Copied!",
     scanQr: "Or scan QR code to join:",
-    
     trainerAccessTitle: "Trainer Access",
     trainerAccessSub: "Enter PIN to access the facilitation cockpit.",
     trainerPinLabel: "Trainer PIN (Use 0000)",
     unlockTrainer: "Unlock Trainer View",
     incorrectPin: "Incorrect Trainer PIN.",
     backToParticipant: "Back to Participant Join",
-    
-    trainerSessionTitle: "Manage Sessions",
-    trainerSessionInput: "Enter existing Session ID",
-    btnLoadSession: "Load Session",
-    btnCreateSession: "Create New Session",
-    trainerSessionError: "Session not found in database.",
-
     tabScenario: "Scenario Builder",
     tabRoles: "Role Setup",
     tabSettings: "Session Settings",
@@ -185,12 +185,10 @@ const translations = {
       submitted: "Submitted",
       rescored: "Re-scored"
     },
-    
     findSessionTitle: "Find Training Session",
     sessionIdInput: "Enter Session ID",
     btnFindSession: "Find Session",
     sessionNotFound: "Session not found. Check the ID and try again.",
-    
     joinTitle: "Join WSJF Session",
     joinNameInput: "Participant name",
     joinRoleSelect: "Available role",
@@ -319,27 +317,30 @@ const translations = {
     helperTc: "Колко намалява стойността, ако се забави?",
     helperRr: "Какъв риск намалява или възможност отключва?",
     helperJs: "Колко голямо е усилието спрямо останалите?",
-
+    summaryTitle: "Сесията приключи",
+    summarySubtitle: "Финален беклог и Анализ на стойността",
+    btnExportCsv: "Експорт в CSV",
+    quickWins: "Бързи победи",
+    majorProjects: "Големи проекти",
+    fillIns: "Пълнеж",
+    thanklessTasks: "Загуба на време",
+    valueEffortMatrix: "Матрица Стойност/Усилие",
+    totalValue: "Обща стойност (CoD)",
+    topFeature: "Топ функционалност",
+    matrixEffort: "Усилие (Job Size)",
+    matrixValue: "Стойност (CoD)",
     btnShare: "Сподели сесия",
     shareTitle: "Покани участници",
     shareLink: "Линк за достъп",
     btnCopy: "Копирай",
     btnCopied: "Копирано!",
     scanQr: "Или сканирай QR кода:",
-    
     trainerAccessTitle: "Достъп за тренера",
     trainerAccessSub: "Въведете PIN за достъп.",
     trainerPinLabel: "PIN (Използвайте 0000)",
     unlockTrainer: "Отключи",
     incorrectPin: "Грешен PIN.",
     backToParticipant: "Обратно към лоби",
-    
-    trainerSessionTitle: "Управление на сесии",
-    trainerSessionInput: "Въведи съществуващо ID на сесия",
-    btnLoadSession: "Зареди сесия",
-    btnCreateSession: "Създай нова сесия",
-    trainerSessionError: "Сесията не е намерена в базата данни.",
-
     tabScenario: "Редактор на сценарии",
     tabRoles: "Настройка на роли",
     tabSettings: "Настройки на сесията",
@@ -367,12 +368,10 @@ const translations = {
       submitted: "Изпратено",
       rescored: "Преоценено"
     },
-    
     findSessionTitle: "Намери сесия",
     sessionIdInput: "Въведи ID на сесия",
     btnFindSession: "Намери",
     sessionNotFound: "Сесията не е намерена. Провери ID-то.",
-    
     joinTitle: "Присъединяване",
     joinNameInput: "Име на участник",
     joinRoleSelect: "Избор на роля",
@@ -436,12 +435,10 @@ const defaultRoleSlots = [
   { id: 'rs3', role: 'bo', seats: 1 }, { id: 'rs4', role: 'dev', seats: 1 },
   { id: 'rs5', role: 'support', seats: 1 }, { id: 'rs6', role: 'compliance', seats: 1 }
 ];
-const mockNames = ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy", "Mallory", "Victor"];
-const snapToScale = (val) => fibonacciScale.reduce((prev, curr) => Math.abs(curr - val) < Math.abs(prev - val) ? curr : prev);
 
 export default function App() {
   const [lang, setLang] = useState('en');
-  const [accessMode, setAccessMode] = useState('participant'); // participant, trainerLocked, trainerSessionSelect, trainerUnlocked
+  const [accessMode, setAccessMode] = useState('participant'); 
   const [trainerPinInput, setTrainerPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
   const trainerPin = "0000"; 
@@ -486,9 +483,13 @@ export default function App() {
   const activeFeatures = useMemo(() => activeScenario.features || [], [activeScenario]);
 
   // SESSION STATE
-  const [session, setSession] = useState(null);
-  const [trainerLoadSessionId, setTrainerLoadSessionId] = useState("");
-  const [trainerSessionError, setTrainerSessionError] = useState("");
+  const [session, setSession] = useState({
+    id: `WSJF-${Math.floor(Math.random() * 9000) + 1000}`,
+    lifecycleStatus: 'draft', 
+    activeFeatureId: activeFeatures[0]?.id || 1,
+    capacity: 30,
+    demoMode: false,
+  });
 
   const [featureRoundState, setFeatureRoundState] = useState(() => {
     return activeFeatures.reduce((acc, curr) => {
@@ -573,19 +574,16 @@ export default function App() {
 
   // FIREBASE REAL-TIME LISTENER
   useEffect(() => {
-    if (!authUser || !db || !session || session.lifecycleStatus === 'draft') return;
+    if (!authUser || !db || session.lifecycleStatus === 'draft') return;
     if (accessMode === 'participant' && !sessionFound) return;
 
     const ref = getDbRef();
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        
-        // Everyone receives latest participants and scores
         setJoinedParticipants(data.joinedParticipants || []);
         setParticipantScores(data.participantScores || {});
 
-        // Participants overwrite their local master state with Trainer's state
         if (accessMode === 'participant' || accessMode === 'participantPreview') {
            if (data.session) setSession(data.session);
            if (data.featureRoundState) setFeatureRoundState(data.featureRoundState);
@@ -595,11 +593,11 @@ export default function App() {
       }
     }, (err) => console.error("Sync error", err));
     return () => unsub();
-  }, [authUser, session?.id, session?.lifecycleStatus, accessMode, sessionFound, getDbRef]);
+  }, [authUser, session.id, session.lifecycleStatus, accessMode, sessionFound, getDbRef]);
 
   // FIREBASE TRAINER STATE PUSH
   useEffect(() => {
-    if (accessMode === 'trainerUnlocked' && session && session.lifecycleStatus !== 'draft' && db) {
+    if (accessMode === 'trainerUnlocked' && session.lifecycleStatus !== 'draft' && db) {
       const pushState = async () => {
         try {
           await setDoc(getDbRef(), {
@@ -613,7 +611,7 @@ export default function App() {
 
   // Sync Draft Scores
   useEffect(() => {
-    if (!currentParticipantId || accessMode === 'participantPreview' || !session) return;
+    if (!currentParticipantId || accessMode === 'participantPreview') return;
     const scores = participantScores[currentParticipantId]?.[session.activeFeatureId];
     const featState = featureRoundState[session.activeFeatureId] || {};
     if (featState.status === 'scoringOpen') {
@@ -626,11 +624,11 @@ export default function App() {
     } else {
        setDraftScores({ bv: null, tc: null, rr: null, js: null });
     }
-  }, [session?.activeFeatureId, featureRoundState, currentParticipantId, participantScores, accessMode, session]);
+  }, [session.activeFeatureId, featureRoundState, currentParticipantId, participantScores, accessMode]);
 
   // SCENARIO MANAGEMENT
   const requestScenarioChange = (newId) => {
-     if (session?.lifecycleStatus === 'inProgress' || session?.lifecycleStatus === 'debrief') {
+     if (session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') {
         setShowScenarioChangeConfirm(newId);
      } else {
         executeScenarioChange(newId);
@@ -665,7 +663,7 @@ export default function App() {
      };
      setCustomScenarios(prev => [...prev, duplicated]);
      
-     if (session?.lifecycleStatus === 'inProgress' || session?.lifecycleStatus === 'debrief') {
+     if (session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') {
         setShowScenarioChangeConfirm(newId);
      } else {
         executeScenarioChange(newId, duplicated);
@@ -687,7 +685,7 @@ export default function App() {
      };
      setCustomScenarios(prev => [...prev, newScen]);
      
-     if (session?.lifecycleStatus === 'inProgress' || session?.lifecycleStatus === 'debrief') {
+     if (session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') {
         setShowScenarioChangeConfirm(newId);
      } else {
         executeScenarioChange(newId, newScen);
@@ -731,48 +729,13 @@ export default function App() {
   // ACTIONS
   const handleTrainerLogin = () => {
     if (trainerPinInput === trainerPin) {
-      setAccessMode('trainerSessionSelect');
+      setAccessMode('trainerUnlocked');
       setPinError(false);
       setTrainerPinInput("");
+      logTimelineEvent('ACCESS', 'Trainer logged in');
     } else {
       setPinError(true);
     }
-  };
-
-  const createNewSession = () => {
-     setSession({
-        id: `WSJF-${Math.floor(Math.random() * 9000) + 1000}`,
-        lifecycleStatus: 'draft', 
-        activeFeatureId: activeFeatures[0]?.id || 1,
-        capacity: 30,
-        demoMode: false,
-     });
-     setAccessMode('trainerUnlocked');
-     logTimelineEvent('ACCESS', 'Trainer created new session');
-  };
-
-  const loadExistingSession = async () => {
-     if(!trainerLoadSessionId.trim() || !db) return;
-     try {
-        const snap = await getDoc(getDbRef(trainerLoadSessionId.toUpperCase()));
-        if (snap.exists()) {
-           const data = snap.data();
-           setSession(data.session);
-           if(data.activeScenarioId) setActiveScenarioId(data.activeScenarioId);
-           if(data.featureRoundState) setFeatureRoundState(data.featureRoundState);
-           if(data.roleSlots) setRoleSlots(data.roleSlots);
-           if(data.joinedParticipants) setJoinedParticipants(data.joinedParticipants);
-           if(data.participantScores) setParticipantScores(data.participantScores);
-           
-           setAccessMode('trainerUnlocked');
-           setTrainerSessionError("");
-           logTimelineEvent('ACCESS', 'Trainer loaded existing session');
-        } else {
-           setTrainerSessionError(t.trainerSessionError);
-        }
-     } catch (e) {
-        setTrainerSessionError("Connection error.");
-     }
   };
 
   const getActiveScore = useCallback((pId, fId) => {
@@ -821,18 +784,18 @@ export default function App() {
     processed = processed.map((item, index) => {
       const js = Number(item.js) || 0;
       let included = false;
-      if (session && usedCap + js <= session.capacity) { included = true; usedCap += js; }
+      if (usedCap + js <= session.capacity) { included = true; usedCap += js; }
       return { ...item, rank: index + 1, included };
     });
     return processed;
-  }, [calcCriterionStats, session?.capacity, activeFeatures, session]);
+  }, [calcCriterionStats, session.capacity, activeFeatures]);
 
   const handleOpenLobby = async () => {
     const newState = 'lobbyOpen';
     setSession(prev => ({ ...prev, lifecycleStatus: newState }));
     logTimelineEvent('SESSION', `Status changed to ${newState}`);
     
-    if (db && session) {
+    if (db) {
        try {
           await setDoc(getDbRef(), {
              session: { ...session, lifecycleStatus: newState },
@@ -852,7 +815,7 @@ export default function App() {
   };
 
   const updateFeatureStatus = (statusUpdate) => {
-     if (!activeFeatures.length || !session) return;
+     if (!activeFeatures.length) return;
      setFeatureRoundState(prev => {
         const next = { ...prev };
         next[session.activeFeatureId] = { 
@@ -869,7 +832,7 @@ export default function App() {
   };
 
   const changeFeature = (dir) => {
-    if (!activeFeatures.length || !session) return;
+    if (!activeFeatures.length) return;
     const currentIndex = activeFeatures.findIndex(i => i.id === session.activeFeatureId);
     let nextIndex = currentIndex + dir;
     if (nextIndex < 0) nextIndex = 0;
@@ -881,7 +844,6 @@ export default function App() {
   };
 
   const executeResetFeatureRound = async () => {
-    if(!session) return;
     const newScores = { ...participantScores };
     Object.keys(newScores).forEach(pId => {
       if (newScores[pId][session.activeFeatureId]) {
@@ -915,6 +877,27 @@ export default function App() {
      setTimeout(() => setIsCopied(false), 2000);
   };
 
+  const handleExportCSV = () => {
+    const backlog = getCalculatedBacklog();
+    const headers = [t.colRank || "Rank", t.colFeature || "Feature", t.colBV || "BV", t.colTC || "TC", t.colRR || "RR", t.colJS || "JS", t.colCoD || "CoD", t.colWSJF || "WSJF", t.colStatus || "Status"];
+    const rows = backlog.map(i => [
+      i.rank,
+      `"${(lang === 'en' ? i.title_en : i.title_bg).replace(/"/g, '""')}"`,
+      i.bv.toFixed(1), i.tc.toFixed(1), i.rr.toFixed(1), i.js.toFixed(1), i.cod.toFixed(1), i.wsjf,
+      i.included ? (t.statusIncluded || "Included") : (t.statusBelow || "Below cut-line")
+    ]);
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    // \uFEFF ensures Excel reads UTF-8 (Cyrillic) correctly
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `WSJF_Summary_${session.id}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const findSession = async () => {
     if (!joinSessionId.trim() || !db) return;
     try {
@@ -944,11 +927,9 @@ export default function App() {
       role: slot.role, isMock: false, joinedAt: new Date().toISOString()
     };
     
-    // Optistic local update
     setJoinedParticipants(prev => [...prev, newParticipant]);
     setCurrentParticipantId(newParticipant.id);
     
-    // Firebase update
     try {
        const snap = await getDoc(getDbRef());
        const currentList = snap.data()?.joinedParticipants || [];
@@ -964,21 +945,20 @@ export default function App() {
   };
 
   const handleDraftScore = (crit, val) => {
-    if (accessMode === 'participantPreview' || !session) return;
+    if (accessMode === 'participantPreview') return;
     const featState = featureRoundState[session.activeFeatureId] || {};
     if (featState.status === 'votingLocked' || featState.status === 'discussion' || featState.status === 'completed' || session.lifecycleStatus === 'ended') return;
     setDraftScores(prev => ({ ...prev, [crit]: val }));
   };
 
   const submitFeatureScores = async () => {
-    if (accessMode === 'participantPreview' || !db || !session) return;
+    if (accessMode === 'participantPreview' || !db) return;
     if (!draftScores.bv || !draftScores.tc || !draftScores.rr || !draftScores.js) return;
     
     const featState = featureRoundState[session.activeFeatureId] || {};
     const targetField = featState.status === 'reScoreOpen' ? 'revised' : 'initial';
     const scoreObj = { ...draftScores, submitted: true, submittedAt: new Date().toISOString() };
     
-    // Optimistic local update
     setParticipantScores(prev => ({
       ...prev,
       [currentParticipantId]: {
@@ -990,7 +970,6 @@ export default function App() {
       }
     }));
 
-    // Firebase write
     try {
        await updateDoc(getDbRef(), {
           [`participantScores.${currentParticipantId}.${session.activeFeatureId}.${targetField}`]: scoreObj
@@ -1002,9 +981,8 @@ export default function App() {
   const addRoleSlot = () => setRoleSlots([...roleSlots, { id: `rs${Date.now()}`, role: 'custom', seats: 1 }]);
   const removeRoleSlot = (id) => setRoleSlots(prev => prev.filter(rs => rs.id !== id));
 
-  // Prompts Generation
   const generatePromptsEngine = useCallback(() => {
-    if (!activeFeatures.length || !session) return;
+    if (!activeFeatures.length) return;
     const currentItem = activeFeatures.find(i => i.id === session.activeFeatureId);
     if (!currentItem) return;
 
@@ -1064,19 +1042,19 @@ export default function App() {
     }
 
     setAiPrompts(newPrompts);
-  }, [session?.activeFeatureId, session?.lifecycleStatus, featureRoundState, joinedParticipants, calcCriterionStats, getActiveScore, lang, t, activeFeatures, session]);
+  }, [session.activeFeatureId, session.lifecycleStatus, featureRoundState, joinedParticipants, calcCriterionStats, getActiveScore, lang, t, activeFeatures]);
 
   useEffect(() => {
     generatePromptsEngine();
-  }, [session?.activeFeatureId, featureRoundState, generatePromptsEngine, session]);
+  }, [session.activeFeatureId, featureRoundState, generatePromptsEngine]);
 
-  const activeFeatureData = activeFeatures.find(i => i.id === session?.activeFeatureId) || activeFeatures[0];
+  const activeFeatureData = activeFeatures.find(i => i.id === session.activeFeatureId) || activeFeatures[0];
   const activeFeatureTitle = activeFeatureData ? (lang === 'en' ? activeFeatureData.title_en : activeFeatureData.title_bg) : "No feature selected";
-  const activeFeatState = session ? (featureRoundState[session.activeFeatureId] || {}) : {};
-  const areResultsRevealed = activeFeatState.resultsRevealed || session?.lifecycleStatus === 'ended';
-  const isVotingLocked = ['votingLocked', 'resultsRevealed', 'discussion', 'completed'].includes(activeFeatState.status) || session?.lifecycleStatus === 'debrief' || session?.lifecycleStatus === 'lobbyOpen' || session?.lifecycleStatus === 'draft' || session?.lifecycleStatus === 'ended';
+  const activeFeatState = featureRoundState[session.activeFeatureId] || {};
+  const areResultsRevealed = activeFeatState.resultsRevealed || session.lifecycleStatus === 'ended';
+  const isVotingLocked = ['votingLocked', 'resultsRevealed', 'discussion', 'completed'].includes(activeFeatState.status) || session.lifecycleStatus === 'debrief' || session.lifecycleStatus === 'lobbyOpen' || session.lifecycleStatus === 'draft' || session.lifecycleStatus === 'ended';
 
-  const activeItemStats = activeFeatureData && session ? {
+  const activeItemStats = activeFeatureData ? {
     bv: calcCriterionStats(session.activeFeatureId, 'bv'), tc: calcCriterionStats(session.activeFeatureId, 'tc'),
     rr: calcCriterionStats(session.activeFeatureId, 'rr'), js: calcCriterionStats(session.activeFeatureId, 'js')
   } : { bv:{avg:0,spread:0}, tc:{avg:0,spread:0}, rr:{avg:0,spread:0}, js:{avg:0,spread:0} };
@@ -1106,7 +1084,6 @@ export default function App() {
   };
 
   const getNextRecommendedAction = () => {
-    if (!session) return { label: "", act: () => {}, bg: '', icon: null };
     if (!activeFeatures.length) return { label: "Add Features", act: () => setSetupExpanded(true), bg: 'bg-[#7A89A3]', icon: <AlertCircle className="w-4 h-4 mr-2"/> };
     if (session.lifecycleStatus === 'draft') return { label: t.btnOpenLobby, act: () => handleOpenLobby(), bg: 'bg-[#5B5FEF]', icon: <Users className="w-4 h-4 mr-2"/> };
     if (session.lifecycleStatus === 'lobbyOpen') return { label: t.btnStartSession, act: () => updateSessionState('inProgress'), bg: 'bg-[#12B981]', icon: <PlayCircle className="w-4 h-4 mr-2"/> };
@@ -1124,7 +1101,7 @@ export default function App() {
   const primaryAction = getNextRecommendedAction();
 
   const myCurrentParticipant = joinedParticipants.find(p => p.id === currentParticipantId);
-  const myVoteState = session ? getActiveScore(currentParticipantId, session.activeFeatureId) : null;
+  const myVoteState = getActiveScore(currentParticipantId, session.activeFeatureId);
   const hasSubmittedActive = myVoteState?.submitted;
 
   const renderPokerRow = (criterion, label) => {
@@ -1159,6 +1136,129 @@ export default function App() {
         </div>
       </div>
     );
+  };
+
+  const renderEndSessionSummary = () => {
+     const backlog = getCalculatedBacklog();
+     const topItem = backlog[0];
+     const totalCodIncluded = backlog.filter(i => i.included).reduce((sum, i) => sum + i.cod, 0);
+
+     return (
+        <div className="animate-in fade-in zoom-in-95 duration-500 w-full">
+           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-[#D9E2F0]">
+              <div className="flex items-center gap-4">
+                 <div className="bg-[#ECFDF5] p-3 rounded-xl border border-[#A7F3D0]">
+                    <BarChart3 className="w-8 h-8 text-[#10B981]" />
+                 </div>
+                 <div>
+                    <h2 className="text-2xl font-black text-[#172033] tracking-tight">{t.summaryTitle}</h2>
+                    <p className="text-sm text-[#53627A]">{t.summarySubtitle}</p>
+                 </div>
+              </div>
+              <button onClick={handleExportCSV} className="flex items-center px-5 py-2.5 bg-[#172033] hover:bg-[#3366FF] text-white text-sm font-bold uppercase tracking-wider rounded-xl transition-colors shadow-sm">
+                 <Download className="w-4 h-4 mr-2" /> {t.btnExportCsv}
+              </button>
+           </div>
+
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#D9E2F0]">
+                 <p className="text-[10px] text-[#7A89A3] uppercase font-bold tracking-wider mb-2">{t.topFeature}</p>
+                 <p className="text-lg font-bold text-[#172033] leading-tight truncate">{topItem ? (lang === 'en' ? topItem.title_en : topItem.title_bg) : '-'}</p>
+                 <p className="text-sm text-[#10B981] font-mono mt-2 font-bold">WSJF: {topItem?.wsjf}</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#D9E2F0]">
+                 <p className="text-[10px] text-[#7A89A3] uppercase font-bold tracking-wider mb-2">{t.totalValue}</p>
+                 <p className="text-3xl font-black text-[#3366FF] font-mono leading-none">{totalCodIncluded.toFixed(1)}</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#D9E2F0]">
+                 <p className="text-[10px] text-[#7A89A3] uppercase font-bold tracking-wider mb-2">{t.capacityLimit}</p>
+                 <div className="flex items-end gap-2">
+                   <p className="text-3xl font-black text-[#172033] font-mono leading-none">{backlog.filter(i=>i.included).reduce((s,i)=>s+(Number(i.js)||0),0).toFixed(1)}</p>
+                   <p className="text-sm text-[#53627A] mb-1">/ {session.capacity}</p>
+                 </div>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+              {/* MATRIX */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#D9E2F0] flex flex-col">
+                 <h3 className="text-sm font-bold text-[#172033] uppercase tracking-wider mb-6">{t.valueEffortMatrix}</h3>
+                 <div className="relative flex-1 min-h-[300px] border-l-2 border-b-2 border-[#172033] ml-6 mb-6 mt-4">
+                    {/* Grid lines */}
+                    <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+                       <div className="border-b border-r border-dashed border-[#D9E2F0] bg-[#ECFDF5]/30 relative"><span className="absolute top-2 left-2 text-[10px] font-bold text-[#10B981] uppercase">{t.quickWins}</span></div>
+                       <div className="border-b border-dashed border-[#D9E2F0] bg-[#EEF4FF]/30 relative"><span className="absolute top-2 right-2 text-[10px] font-bold text-[#3366FF] uppercase">{t.majorProjects}</span></div>
+                       <div className="border-r border-dashed border-[#D9E2F0] bg-[#F8FAFF] relative"><span className="absolute bottom-2 left-2 text-[10px] font-bold text-[#7A89A3] uppercase">{t.fillIns}</span></div>
+                       <div className="bg-[#FEF2F2]/30 relative"><span className="absolute bottom-2 right-2 text-[10px] font-bold text-[#EF4444] uppercase">{t.thanklessTasks}</span></div>
+                    </div>
+                    
+                    {/* Dots */}
+                    {backlog.map(item => {
+                       const left = Math.min(100, Math.max(0, (item.js / 20) * 100));
+                       const bottom = Math.min(100, Math.max(0, (item.cod / 60) * 100));
+                       return (
+                          <div key={item.id} 
+                             className="absolute w-4 h-4 rounded-full bg-[#172033] border-2 border-white shadow-md transform -translate-x-1/2 translate-y-1/2 group z-10 transition-transform hover:scale-150"
+                             style={{ left: `${left}%`, bottom: `${bottom}%` }}>
+                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#172033] text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-20">
+                                {lang === 'en' ? item.title_en : item.title_bg} (WSJF: {item.wsjf})
+                             </div>
+                          </div>
+                       );
+                    })}
+                    
+                    {/* Labels */}
+                    <span className="absolute -left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-[#7A89A3] uppercase tracking-wider whitespace-nowrap">{t.matrixValue}</span>
+                    <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[#7A89A3] uppercase tracking-wider whitespace-nowrap">{t.matrixEffort}</span>
+                 </div>
+              </div>
+
+              {/* TABLE */}
+              <div className="bg-white rounded-2xl shadow-sm border border-[#D9E2F0] overflow-hidden flex flex-col">
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-[10px] text-[#7A89A3] uppercase bg-[#F8FAFF] sticky top-0 border-b border-[#D9E2F0]">
+                         <tr>
+                            <th className="px-4 py-3 font-bold text-center w-12">{t.colRank}</th>
+                            <th className="px-4 py-3 font-bold">{t.colFeature}</th>
+                            <th className="px-3 py-3 font-bold text-center bg-[#F8FAFF]">{t.colCoD}</th>
+                            <th className="px-3 py-3 font-bold text-center bg-[#FEF3C7]/30 text-[#D97706]">{t.colJS}</th>
+                            <th className="px-4 py-3 font-bold text-right bg-[#EEF4FF] text-[#1D4ED8]">{t.colWSJF}</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#F4F7FC]">
+                         {backlog.map((item, idx) => {
+                            const showCutline = !item.included && (idx === 0 || backlog[idx-1].included);
+                            return (
+                               <React.Fragment key={item.id}>
+                                  {showCutline && (
+                                     <tr>
+                                        <td colSpan="5" className="p-0">
+                                           <div className="flex items-center w-full bg-[#FEF2F2]">
+                                              <div className="h-[1px] w-full bg-[#EF4444]"></div>
+                                              <span className="text-[#EF4444] text-[9px] font-bold uppercase tracking-wider px-3 py-1 whitespace-nowrap mx-2">Cut-Line</span>
+                                              <div className="h-[1px] w-full bg-[#EF4444]"></div>
+                                           </div>
+                                        </td>
+                                     </tr>
+                                  )}
+                                  <tr className={`hover:bg-[#F8FAFF] transition-colors ${!item.included ? 'opacity-60 grayscale' : ''}`}>
+                                     <td className="px-4 py-3 text-center font-mono font-bold text-[#A0ABBF]">{item.rank}</td>
+                                     <td className="px-4 py-3 font-bold text-[#172033] text-[13px]">{lang === 'en' ? item.title_en : item.title_bg}</td>
+                                     <td className="px-3 py-3 text-center font-mono font-medium text-[#53627A] bg-[#F8FAFF]">{item.cod.toFixed(1)}</td>
+                                     <td className="px-3 py-3 text-center font-mono font-bold text-[#D97706] bg-[#FEF3C7]/20">{item.js.toFixed(1)}</td>
+                                     <td className="px-4 py-3 text-right font-mono font-black text-[#3366FF] bg-[#EEF4FF]/50 text-base">{item.wsjf}</td>
+                                  </tr>
+                               </React.Fragment>
+                            );
+                         })}
+                      </tbody>
+                    </table>
+                 </div>
+              </div>
+           </div>
+        </div>
+     );
   };
 
   const [fbErrorState] = useState(firebaseInitError);
@@ -1259,7 +1359,7 @@ export default function App() {
         )}
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Calculator className={`w-7 h-7 ${(accessMode === 'trainerUnlocked' || accessMode === 'trainerSessionSelect') ? 'text-[#5B5FEF]' : 'text-[#3366FF]'}`} />
+            <Calculator className={`w-7 h-7 ${accessMode === 'trainerUnlocked' ? 'text-[#5B5FEF]' : 'text-[#3366FF]'}`} />
             <div>
               <h1 className="text-lg font-black leading-tight tracking-tight">{t.appTitle}</h1>
               <p className="text-[10px] text-[#7A89A3] font-bold uppercase tracking-wider hidden sm:block">Facilitation Cockpit</p>
@@ -1272,7 +1372,7 @@ export default function App() {
               <span className="text-[#D9E2F0]">|</span>
               <button onClick={() => setLang('bg')} className={`text-xs font-bold transition-colors ${lang === 'bg' ? 'text-[#172033]' : 'text-[#7A89A3] hover:text-[#3366FF]'}`}>BG</button>
             </div>
-            {((accessMode === 'trainerUnlocked' || sessionFound) && session) && (
+            {(accessMode === 'trainerUnlocked' || sessionFound) && (
               <div className="flex items-center space-x-3 text-xs">
                   <span className="bg-[#F8FAFF] text-[#53627A] px-3 py-1.5 rounded-lg border border-[#D9E2F0] font-mono font-bold shadow-sm">
                     {session.id}
@@ -1297,34 +1397,6 @@ export default function App() {
               </div>
               <button onClick={handleTrainerLogin} className="w-full bg-[#5B5FEF] hover:bg-[#4F46E5] text-white font-bold py-4 px-4 rounded-xl transition-colors shadow-md mb-4">{t.unlockTrainer}</button>
               <button onClick={() => setAccessMode('participant')} className="text-xs font-bold text-[#7A89A3] hover:text-[#172033] transition-colors">{t.backToParticipant}</button>
-           </div>
-        </div>
-      )}
-
-      {/* NEW: TRAINER SESSION SELECTION */}
-      {accessMode === 'trainerSessionSelect' && (
-        <div className="min-h-[80vh] flex items-center justify-center p-4">
-           <div className="bg-white rounded-[24px] shadow-xl border border-[#D9E2F0] p-10 max-w-md w-full text-center">
-              <Settings className="w-12 h-12 text-[#5B5FEF] mx-auto mb-4" />
-              <h2 className="text-2xl font-black text-[#172033] mb-2">{t.trainerSessionTitle}</h2>
-              <p className="text-[#53627A] text-sm mb-8">Create a new workshop session or load an existing one from the database.</p>
-              
-              <div className="bg-[#F8FAFF] p-6 rounded-xl border border-[#D9E2F0] mb-6">
-                 <label className="block text-xs font-bold text-[#7A89A3] uppercase tracking-wider mb-2 text-left">{t.trainerSessionInput}</label>
-                 <input type="text" value={trainerLoadSessionId} onChange={e => setTrainerLoadSessionId(e.target.value.toUpperCase())} className="w-full p-4 border border-[#D9E2F0] rounded-xl focus:border-[#5B5FEF] focus:ring-2 focus:ring-[#EEF4FF] outline-none transition-all font-mono text-xl text-center tracking-widest uppercase mb-4" placeholder="WSJF-XXXX" />
-                 <button onClick={loadExistingSession} disabled={!trainerLoadSessionId.trim()} className="w-full bg-[#172033] hover:bg-[#5B5FEF] disabled:bg-[#D9E2F0] disabled:text-[#A0ABBF] text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-sm">{t.btnLoadSession}</button>
-                 {trainerSessionError && <p className="text-[#EF4444] text-xs font-bold mt-3">{trainerSessionError}</p>}
-              </div>
-
-              <div className="relative flex items-center py-5">
-                 <div className="flex-grow border-t border-[#D9E2F0]"></div>
-                 <span className="flex-shrink-0 mx-4 text-[#A0ABBF] text-xs font-bold uppercase tracking-wider">OR</span>
-                 <div className="flex-grow border-t border-[#D9E2F0]"></div>
-              </div>
-
-              <button onClick={createNewSession} className="w-full bg-white border-2 border-[#5B5FEF] text-[#5B5FEF] hover:bg-[#EEF4FF] font-bold py-4 px-4 rounded-xl transition-colors shadow-sm flex items-center justify-center">
-                 <Plus className="w-5 h-5 mr-2" /> {t.btnCreateSession}
-              </button>
            </div>
         </div>
       )}
@@ -1354,7 +1426,7 @@ export default function App() {
             )}
 
             {/* JOIN SCREEN (After session is found) */}
-            {sessionFound && !currentParticipantId && accessMode !== 'participantPreview' && session && (
+            {sessionFound && !currentParticipantId && accessMode !== 'participantPreview' && (
               <div className="max-w-md mx-auto bg-white rounded-[24px] shadow-lg border border-[#D9E2F0] overflow-hidden mt-12 animate-in fade-in zoom-in-95">
                 <div className="bg-[#3366FF] p-8 text-center relative overflow-hidden">
                   <Calculator className="w-12 h-12 text-white mx-auto mb-4 relative z-10" />
@@ -1387,7 +1459,7 @@ export default function App() {
             )}
 
             {/* JOINED WORKSPACE */}
-            {(currentParticipantId || accessMode === 'participantPreview') && session && (
+            {(currentParticipantId || accessMode === 'participantPreview') && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-[#D9E2F0] mb-6">
                    <div className="flex items-center">
@@ -1413,13 +1485,7 @@ export default function App() {
                    </div>
                 )}
 
-                {session.lifecycleStatus === 'ended' && (
-                   <div className="bg-white rounded-[24px] shadow-sm border border-[#D9E2F0] p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
-                      <CheckCircle2 className="w-16 h-16 text-[#7A89A3] mb-6 mx-auto" />
-                      <h3 className="text-2xl font-black text-[#172033] mb-3">{t.states?.ended || 'Ended'}</h3>
-                      <p className="text-[#53627A] font-medium">{t.sessionEndedMsg}</p>
-                   </div>
-                )}
+                {session.lifecycleStatus === 'ended' && renderEndSessionSummary()}
 
                 {/* SCORING WORKSPACE */}
                 {(session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') && (
@@ -1554,7 +1620,7 @@ export default function App() {
         {/* =====================================================================
             TRAINER UNLOCKED VIEW
         ====================================================================== */}
-        {(accessMode === 'trainerUnlocked' && session) && (
+        {accessMode === 'trainerUnlocked' && (
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-500">
             
             {/* SUMMARY BAR */}
@@ -1580,9 +1646,11 @@ export default function App() {
                </div>
 
                <div className="flex items-center gap-3">
-                 <button onClick={() => primaryAction.act()} className={`px-4 py-1.5 text-[10px] font-bold text-white uppercase tracking-wider rounded-lg shadow-sm transition-all flex items-center ${primaryAction.bg}`}>
-                    {primaryAction.icon} {primaryAction.label}
-                 </button>
+                 {session.lifecycleStatus !== 'ended' && (
+                    <button onClick={() => primaryAction.act()} className={`px-4 py-1.5 text-[10px] font-bold text-white uppercase tracking-wider rounded-lg shadow-sm transition-all flex items-center ${primaryAction.bg}`}>
+                       {primaryAction.icon} {primaryAction.label}
+                    </button>
+                 )}
                  <div className="w-px h-4 bg-[#D9E2F0] mx-1"></div>
                  <button onClick={() => setShowShareModal(true)} className="text-[10px] font-bold text-[#3366FF] bg-[#EEF4FF] border border-[#C6D4EA] px-3 py-1.5 rounded-lg hover:bg-[#D9E2F0] uppercase tracking-wider flex items-center transition-colors">
                     <Share2 className="w-3.5 h-3.5 mr-1.5"/> {t.btnShare}
@@ -1590,342 +1658,346 @@ export default function App() {
                  <button onClick={() => setAccessMode('participantPreview')} className="text-[10px] font-bold text-[#5B5FEF] uppercase tracking-wider hover:underline flex items-center ml-2">
                     <Eye className="w-3.5 h-3.5 mr-1.5"/> {t.previewPart}
                  </button>
-                 <button onClick={() => setAccessMode('trainerSessionSelect')} className="text-[10px] font-bold text-[#7A89A3] hover:text-[#172033] uppercase tracking-wider flex items-center ml-2">
-                    <Settings className="w-3.5 h-3.5 mr-1.5"/> Session Menu
+                 <button onClick={() => setAccessMode('trainerLocked')} className="text-[10px] font-bold text-[#7A89A3] hover:text-[#172033] uppercase tracking-wider flex items-center ml-2">
+                    <Lock className="w-3.5 h-3.5 mr-1.5"/> {t.lockTrainer}
                  </button>
                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-               
-               {/* 70% MAIN LEFT */}
-               <div className="lg:col-span-8 flex flex-col gap-5">
+            {session.lifecycleStatus === 'ended' ? (
+               renderEndSessionSummary()
+            ) : (
+               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                   
-                  {/* Active Feature Card */}
-                  <div className="bg-white rounded-[20px] shadow-sm border border-[#D9E2F0] overflow-hidden flex flex-col">
-                    <div className="p-6 bg-gradient-to-r from-[#F8FAFF] to-white border-b border-[#D9E2F0] flex justify-between items-center gap-4">
-                       <div className="flex-1">
-                         <div className="flex items-center gap-3 mb-1.5">
-                           <h2 className="text-xl font-black text-[#172033] tracking-tight">{activeFeatureTitle}</h2>
-                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${activeFeatState?.status === 'completed' ? 'bg-[#F4F7FC] text-[#7A89A3] border-[#D9E2F0]' : 'bg-[#EEF4FF] text-[#3366FF] border-[#C6D4EA]'}`}>
-                             {t.featStatuses?.[activeFeatState?.status] || t.featStatuses?.notStarted || 'Not started'}
-                           </span>
-                         </div>
-                         <p className="text-xs text-[#53627A] truncate max-w-xl">{activeFeatureData ? (lang === 'en' ? activeFeatureData.desc_en : activeFeatureData.desc_bg) : ''}</p>
-                         
-                         {activeFeatureData && (lang === 'en' ? activeFeatureData.details_en : activeFeatureData.details_bg) && (
-                            <div className="mt-3">
-                               <button onClick={() => setShowFeatureDetails(!showFeatureDetails)} className="text-[10px] font-bold text-[#3366FF] hover:underline uppercase tracking-wider flex items-center transition-colors">
-                                  {showFeatureDetails ? t.btnHideDetails : t.btnShowDetails}
-                                  {showFeatureDetails ? <ChevronDown className="w-3 h-3 ml-1 rotate-180 transition-transform" /> : <ChevronDown className="w-3 h-3 ml-1 transition-transform" />}
-                               </button>
-                               {showFeatureDetails && (
-                                  <div className="mt-3 p-4 bg-white border border-[#D9E2F0] rounded-lg text-xs text-[#53627A] shadow-sm whitespace-pre-wrap leading-relaxed">
-                                     {lang === 'en' ? activeFeatureData.details_en : activeFeatureData.details_bg}
-                                  </div>
-                               )}
+                  {/* 70% MAIN LEFT */}
+                  <div className="lg:col-span-8 flex flex-col gap-5">
+                     
+                     {/* Active Feature Card */}
+                     <div className="bg-white rounded-[20px] shadow-sm border border-[#D9E2F0] overflow-hidden flex flex-col">
+                       <div className="p-6 bg-gradient-to-r from-[#F8FAFF] to-white border-b border-[#D9E2F0] flex justify-between items-center gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-1.5">
+                              <h2 className="text-xl font-black text-[#172033] tracking-tight">{activeFeatureTitle}</h2>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${activeFeatState?.status === 'completed' ? 'bg-[#F4F7FC] text-[#7A89A3] border-[#D9E2F0]' : 'bg-[#EEF4FF] text-[#3366FF] border-[#C6D4EA]'}`}>
+                                {t.featStatuses?.[activeFeatState?.status] || t.featStatuses?.notStarted || 'Not started'}
+                              </span>
                             </div>
-                         )}
-                       </div>
-                    </div>
-
-                    {areResultsRevealed && (
-                       <div className="grid grid-cols-6 border-b border-[#D9E2F0] divide-x divide-[#F4F7FC] bg-[#F8FAFF] text-center">
-                          <div className="py-2.5"><p className="text-[9px] uppercase text-[#7A89A3] font-bold tracking-wider mb-0.5">{t.colBV}</p><p className="text-sm font-bold text-[#172033]">{activeItemStats.bv.avg.toFixed(1)}</p></div>
-                          <div className="py-2.5"><p className="text-[9px] uppercase text-[#7A89A3] font-bold tracking-wider mb-0.5">{t.colTC}</p><p className="text-sm font-bold text-[#172033]">{activeItemStats.tc.avg.toFixed(1)}</p></div>
-                          <div className="py-2.5"><p className="text-[9px] uppercase text-[#7A89A3] font-bold tracking-wider mb-0.5">{t.colRR}</p><p className="text-sm font-bold text-[#172033]">{activeItemStats.rr.avg.toFixed(1)}</p></div>
-                          <div className="py-2.5"><p className="text-[9px] uppercase text-[#7A89A3] font-bold tracking-wider mb-0.5">{t.colJS}</p><p className="text-sm font-bold text-[#D97706]">{activeItemStats.js.avg.toFixed(1)}</p></div>
-                          <div className="py-2.5 col-span-2 flex items-center justify-center gap-3 bg-white">
-                             <div className="text-right"><p className="text-[9px] uppercase text-[#A0ABBF] font-bold tracking-wider mb-0.5">{t.highestSpreadCrit}</p><p className="text-[11px] font-bold text-[#172033] uppercase">{maxSpreadCrit}</p></div>
-                             <div className={`px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded border ${getConsensusColor(maxSpreadObj.val)}`}>{getConsensusLevel(maxSpreadObj.val)}</div>
+                            <p className="text-xs text-[#53627A] truncate max-w-xl">{activeFeatureData ? (lang === 'en' ? activeFeatureData.desc_en : activeFeatureData.desc_bg) : ''}</p>
+                            
+                            {activeFeatureData && (lang === 'en' ? activeFeatureData.details_en : activeFeatureData.details_bg) && (
+                               <div className="mt-3">
+                                  <button onClick={() => setShowFeatureDetails(!showFeatureDetails)} className="text-[10px] font-bold text-[#3366FF] hover:underline uppercase tracking-wider flex items-center transition-colors">
+                                     {showFeatureDetails ? t.btnHideDetails : t.btnShowDetails}
+                                     {showFeatureDetails ? <ChevronDown className="w-3 h-3 ml-1 rotate-180 transition-transform" /> : <ChevronDown className="w-3 h-3 ml-1 transition-transform" />}
+                                  </button>
+                                  {showFeatureDetails && (
+                                     <div className="mt-3 p-4 bg-white border border-[#D9E2F0] rounded-lg text-xs text-[#53627A] shadow-sm whitespace-pre-wrap leading-relaxed">
+                                        {lang === 'en' ? activeFeatureData.details_en : activeFeatureData.details_bg}
+                                     </div>
+                                  )}
+                               </div>
+                            )}
                           </div>
                        </div>
-                    )}
 
-                    {/* Live Table */}
-                    <div className="overflow-x-auto max-h-[400px]">
-                       <table className="w-full text-sm text-left relative">
-                         <thead className="text-[10px] text-[#7A89A3] uppercase bg-white sticky top-0 border-b border-[#D9E2F0] z-10 shadow-sm">
-                           <tr>
-                             <th className="px-5 py-3 font-bold">{t.participantRole}</th>
-                             <th className="px-4 py-3 font-bold">{t.voteStatus}</th>
-                             <th className="px-3 py-3 font-bold text-center w-16">{t.colBV}</th>
-                             <th className="px-3 py-3 font-bold text-center w-16">{t.colTC}</th>
-                             <th className="px-3 py-3 font-bold text-center w-16">{t.colRR}</th>
-                             <th className="px-3 py-3 font-bold text-center w-16 bg-[#FEF3C7]/30 text-[#B45309]">{t.colJS}</th>
-                             <th className="px-3 py-3 font-bold text-center w-20 bg-[#F8FAFF]">{t.colCoD}</th>
-                             <th className="px-3 py-3 font-bold text-center w-20 bg-[#EEF4FF] text-[#1D4ED8]">{t.colWSJF}</th>
-                           </tr>
-                         </thead>
-                         <tbody className="divide-y divide-[#F4F7FC]">
-                           {joinedParticipants.map(p => {
-                             const scoreData = getActiveScore(p.id, session.activeFeatureId);
-                             const hasVoted = scoreData?.submitted;
-                             const stats = calcRowWSJF(scoreData);
-                             return (
-                               <tr key={p.id} className="hover:bg-[#F8FAFF] transition-colors">
-                                 <td className="px-5 py-2.5">
-                                    <p className="font-bold text-[#172033] text-[13px]">{p.name}</p>
-                                    <p className="text-[9px] text-[#7A89A3] uppercase tracking-wider mt-0.5">{t.roles?.[p.role] || p.role}</p>
-                                 </td>
-                                 <td className="px-4 py-2.5">
-                                   {hasVoted ? 
-                                     <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-bold bg-[#ECFDF5] text-[#10B981] uppercase tracking-wider border border-[#A7F3D0]"><CheckSquare className="w-3 h-3 mr-1"/> {t.partStatuses?.submitted || 'Submitted'}</span> : 
-                                     <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-bold bg-[#F4F7FC] text-[#7A89A3] uppercase tracking-wider border border-[#D9E2F0]">{t.partStatuses?.notStarted || 'Not started'}</span>}
-                                 </td>
-                                 <td className="px-3 py-2.5 text-center font-mono font-bold text-[#53627A]">{areResultsRevealed ? (hasVoted ? scoreData.bv : '-') : (hasVoted ? <span className="text-[10px] text-[#A0ABBF] uppercase font-sans font-medium">{t.hidden}</span> : '-')}</td>
-                                 <td className="px-3 py-2.5 text-center font-mono font-bold text-[#53627A]">{areResultsRevealed ? (hasVoted ? scoreData.tc : '-') : (hasVoted ? <span className="text-[10px] text-[#A0ABBF] uppercase font-sans font-medium">{t.hidden}</span> : '-')}</td>
-                                 <td className="px-3 py-2.5 text-center font-mono font-bold text-[#53627A]">{areResultsRevealed ? (hasVoted ? scoreData.rr : '-') : (hasVoted ? <span className="text-[10px] text-[#A0ABBF] uppercase font-sans font-medium">{t.hidden}</span> : '-')}</td>
-                                 <td className="px-3 py-2.5 text-center font-mono font-bold text-[#D97706] bg-[#FEF3C7]/20">{areResultsRevealed ? (hasVoted ? scoreData.js : '-') : (hasVoted ? <span className="text-[10px] text-[#D97706] uppercase font-sans font-medium opacity-50">{t.hidden}</span> : '-')}</td>
-                                 <td className="px-3 py-2.5 text-center font-mono font-bold text-[#172033] bg-[#F8FAFF]">{areResultsRevealed ? (hasVoted ? stats.cod : '-') : '-'}</td>
-                                 <td className="px-3 py-2.5 text-center font-mono font-bold text-[#3366FF] bg-[#EEF4FF]/50">{areResultsRevealed ? (hasVoted ? stats.wsjf : '-') : '-'}</td>
-                               </tr>
-                             );
-                           })}
-                           {joinedParticipants.length === 0 && (
-                              <tr><td colSpan="8" className="px-5 py-12 text-center text-[#7A89A3] text-sm font-medium">{t.noData}</td></tr>
-                           )}
-                         </tbody>
-                       </table>
-                    </div>
-                  </div>
+                       {areResultsRevealed && (
+                          <div className="grid grid-cols-6 border-b border-[#D9E2F0] divide-x divide-[#F4F7FC] bg-[#F8FAFF] text-center">
+                             <div className="py-2.5"><p className="text-[9px] uppercase text-[#7A89A3] font-bold tracking-wider mb-0.5">{t.colBV}</p><p className="text-sm font-bold text-[#172033]">{activeItemStats.bv.avg.toFixed(1)}</p></div>
+                             <div className="py-2.5"><p className="text-[9px] uppercase text-[#7A89A3] font-bold tracking-wider mb-0.5">{t.colTC}</p><p className="text-sm font-bold text-[#172033]">{activeItemStats.tc.avg.toFixed(1)}</p></div>
+                             <div className="py-2.5"><p className="text-[9px] uppercase text-[#7A89A3] font-bold tracking-wider mb-0.5">{t.colRR}</p><p className="text-sm font-bold text-[#172033]">{activeItemStats.rr.avg.toFixed(1)}</p></div>
+                             <div className="py-2.5"><p className="text-[9px] uppercase text-[#7A89A3] font-bold tracking-wider mb-0.5">{t.colJS}</p><p className="text-sm font-bold text-[#D97706]">{activeItemStats.js.avg.toFixed(1)}</p></div>
+                             <div className="py-2.5 col-span-2 flex items-center justify-center gap-3 bg-white">
+                                <div className="text-right"><p className="text-[9px] uppercase text-[#A0ABBF] font-bold tracking-wider mb-0.5">{t.highestSpreadCrit}</p><p className="text-[11px] font-bold text-[#172033] uppercase">{maxSpreadCrit}</p></div>
+                                <div className={`px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded border ${getConsensusColor(maxSpreadObj.val)}`}>{getConsensusLevel(maxSpreadObj.val)}</div>
+                             </div>
+                          </div>
+                       )}
 
-                  {/* Tabs */}
-                  <div className="bg-white rounded-[18px] shadow-sm border border-[#D9E2F0] overflow-hidden">
-                     <div className="flex border-b border-[#D9E2F0] bg-[#F8FAFF]">
-                        <button onClick={() => setActiveTrainerTab('progress')} className={`flex-1 py-3 px-4 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTrainerTab === 'progress' ? 'text-[#3366FF] bg-white border-[#3366FF]' : 'text-[#7A89A3] hover:text-[#172033] border-transparent'}`}>
-                           {t.featureProgressTitle}
-                        </button>
-                        <button onClick={() => setActiveTrainerTab('heatmap')} className={`flex-1 py-3 px-4 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTrainerTab === 'heatmap' ? 'text-[#3366FF] bg-white border-[#3366FF]' : 'text-[#7A89A3] hover:text-[#172033] border-transparent'}`}>
-                           {t.heatmapTitle}
-                        </button>
-                        <button onClick={() => setActiveTrainerTab('cutline')} className={`flex-1 py-3 px-4 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTrainerTab === 'cutline' ? 'text-[#3366FF] bg-white border-[#3366FF]' : 'text-[#7A89A3] hover:text-[#172033] border-transparent'}`}>
-                           {t.releaseSimTitle}
-                        </button>
-                        <button onClick={() => setActiveTrainerTab('timeline')} className={`flex-1 py-3 px-4 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTrainerTab === 'timeline' ? 'text-[#3366FF] bg-white border-[#3366FF]' : 'text-[#7A89A3] hover:text-[#172033] border-transparent'}`}>
-                           {t.timelineTitle}
-                        </button>
-                     </div>
-                     
-                     <div className="p-0 bg-white max-h-[350px] overflow-y-auto">
-                        {activeTrainerTab === 'progress' && (
-                          <table className="w-full text-sm text-left">
-                            <thead className="text-[9px] text-[#7A89A3] uppercase bg-[#F8FAFF] sticky top-0 border-b border-[#D9E2F0]">
+                       {/* Live Table */}
+                       <div className="overflow-x-auto max-h-[400px]">
+                          <table className="w-full text-sm text-left relative">
+                            <thead className="text-[10px] text-[#7A89A3] uppercase bg-white sticky top-0 border-b border-[#D9E2F0] z-10 shadow-sm">
                               <tr>
-                                 <th className="px-5 py-2.5 font-bold">{t.colFeature}</th>
-                                 <th className="px-4 py-2.5 font-bold text-center">{t.colSubmittedCnt}</th>
-                                 <th className="px-4 py-2.5 font-bold text-center">{t.colRevealed}</th>
-                                 <th className="px-5 py-2.5 font-bold text-right">{t.colAvgWsjf}</th>
+                                <th className="px-5 py-3 font-bold">{t.participantRole}</th>
+                                <th className="px-4 py-3 font-bold">{t.voteStatus}</th>
+                                <th className="px-3 py-3 font-bold text-center w-16">{t.colBV}</th>
+                                <th className="px-3 py-3 font-bold text-center w-16">{t.colTC}</th>
+                                <th className="px-3 py-3 font-bold text-center w-16">{t.colRR}</th>
+                                <th className="px-3 py-3 font-bold text-center w-16 bg-[#FEF3C7]/30 text-[#B45309]">{t.colJS}</th>
+                                <th className="px-3 py-3 font-bold text-center w-20 bg-[#F8FAFF]">{t.colCoD}</th>
+                                <th className="px-3 py-3 font-bold text-center w-20 bg-[#EEF4FF] text-[#1D4ED8]">{t.colWSJF}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[#F4F7FC]">
-                              {activeFeatures.map(item => {
-                                const fState = featureRoundState[item.id] || { status: 'notStarted', resultsRevealed: false };
-                                const submittedCnt = joinedParticipants.filter(p => participantScores[p.id]?.[item.id]?.initial?.submitted).length;
-                                const jsAvg = calcCriterionStats(item.id, 'js').avg;
-                                const codAvg = calcCriterionStats(item.id, 'bv').avg + calcCriterionStats(item.id, 'tc').avg + calcCriterionStats(item.id, 'rr').avg;
-                                const wsjf = jsAvg > 0 ? (codAvg / jsAvg).toFixed(2) : '-';
+                              {joinedParticipants.map(p => {
+                                const scoreData = getActiveScore(p.id, session.activeFeatureId);
+                                const hasVoted = scoreData?.submitted;
+                                const stats = calcRowWSJF(scoreData);
                                 return (
-                                  <tr key={item.id} className={`hover:bg-[#F8FAFF] ${item.id === session.activeFeatureId ? 'bg-[#EEF4FF]/40' : ''}`}>
-                                    <td className="px-5 py-2.5 font-medium text-[#172033] text-[13px] flex items-center">
-                                      {item.id === session.activeFeatureId && <div className="w-1.5 h-1.5 rounded-full bg-[#3366FF] mr-2"></div>}
-                                      {lang === 'en' ? item.title_en : item.title_bg}
+                                  <tr key={p.id} className="hover:bg-[#F8FAFF] transition-colors">
+                                    <td className="px-5 py-2.5">
+                                       <p className="font-bold text-[#172033] text-[13px]">{p.name}</p>
+                                       <p className="text-[9px] text-[#7A89A3] uppercase tracking-wider mt-0.5">{t.roles?.[p.role] || p.role}</p>
                                     </td>
-                                    <td className="px-4 py-2.5 text-center text-[#53627A] font-mono text-xs">{submittedCnt} / {joinedParticipants.length}</td>
-                                    <td className="px-4 py-2.5 text-center">
-                                      {fState.resultsRevealed ? <CheckCircle2 className="w-3.5 h-3.5 text-[#12B981] mx-auto" /> : <span className="text-[#D9E2F0]">-</span>}
+                                    <td className="px-4 py-2.5">
+                                      {hasVoted ? 
+                                        <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-bold bg-[#ECFDF5] text-[#10B981] uppercase tracking-wider border border-[#A7F3D0]"><CheckSquare className="w-3 h-3 mr-1"/> {t.partStatuses?.submitted || 'Submitted'}</span> : 
+                                        <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-bold bg-[#F4F7FC] text-[#7A89A3] uppercase tracking-wider border border-[#D9E2F0]">{t.partStatuses?.notStarted || 'Not started'}</span>}
                                     </td>
-                                    <td className="px-5 py-2.5 text-right font-mono font-bold text-[#3366FF]">{submittedCnt > 0 ? wsjf : '-'}</td>
+                                    <td className="px-3 py-2.5 text-center font-mono font-bold text-[#53627A]">{areResultsRevealed ? (hasVoted ? scoreData.bv : '-') : (hasVoted ? <span className="text-[10px] text-[#A0ABBF] uppercase font-sans font-medium">{t.hidden}</span> : '-')}</td>
+                                    <td className="px-3 py-2.5 text-center font-mono font-bold text-[#53627A]">{areResultsRevealed ? (hasVoted ? scoreData.tc : '-') : (hasVoted ? <span className="text-[10px] text-[#A0ABBF] uppercase font-sans font-medium">{t.hidden}</span> : '-')}</td>
+                                    <td className="px-3 py-2.5 text-center font-mono font-bold text-[#53627A]">{areResultsRevealed ? (hasVoted ? scoreData.rr : '-') : (hasVoted ? <span className="text-[10px] text-[#A0ABBF] uppercase font-sans font-medium">{t.hidden}</span> : '-')}</td>
+                                    <td className="px-3 py-2.5 text-center font-mono font-bold text-[#D97706] bg-[#FEF3C7]/20">{areResultsRevealed ? (hasVoted ? scoreData.js : '-') : (hasVoted ? <span className="text-[10px] text-[#D97706] uppercase font-sans font-medium opacity-50">{t.hidden}</span> : '-')}</td>
+                                    <td className="px-3 py-2.5 text-center font-mono font-bold text-[#172033] bg-[#F8FAFF]">{areResultsRevealed ? (hasVoted ? stats.cod : '-') : '-'}</td>
+                                    <td className="px-3 py-2.5 text-center font-mono font-bold text-[#3366FF] bg-[#EEF4FF]/50">{areResultsRevealed ? (hasVoted ? stats.wsjf : '-') : '-'}</td>
                                   </tr>
                                 );
                               })}
-                              {activeFeatures.length === 0 && <tr><td colSpan="4" className="text-center p-6 text-sm text-[#7A89A3]">{t.emptyScenario}</td></tr>}
+                              {joinedParticipants.length === 0 && (
+                                 <tr><td colSpan="8" className="px-5 py-12 text-center text-[#7A89A3] text-sm font-medium">{t.noData}</td></tr>
+                              )}
                             </tbody>
                           </table>
-                        )}
+                       </div>
+                     </div>
 
-                        {activeTrainerTab === 'heatmap' && (
-                          <div className="p-4">
-                            <div className="flex flex-wrap gap-4 mb-4 text-[9px] uppercase tracking-wider font-bold px-2">
-                              <span className="flex items-center text-[#059669]"><span className="w-2.5 h-2.5 rounded bg-[#ECFDF5] border border-[#A7F3D0] mr-1.5"></span> {t.lowDis} (0-2)</span>
-                              <span className="flex items-center text-[#D97706]"><span className="w-2.5 h-2.5 rounded bg-[#FEF3C7] border border-[#FDE68A] mr-1.5"></span> {t.medDis} (3-5)</span>
-                              <span className="flex items-center text-[#EF4444]"><span className="w-2.5 h-2.5 rounded bg-[#FEF2F2] border border-[#FECACA] mr-1.5"></span> {t.highDis} (6+)</span>
-                            </div>
-                            <div className="overflow-x-auto border border-[#D9E2F0] rounded-lg">
-                              <table className="w-full text-sm text-left">
-                                <thead className="text-[9px] text-[#7A89A3] uppercase bg-[#F8FAFF] border-b border-[#D9E2F0]">
-                                  <tr>
-                                    <th className="px-4 py-2 font-bold">{t.colFeature}</th>
-                                    {criteriaKeys.map(k => <th key={k} className="px-2 py-2 text-center w-16">{k.toUpperCase()}</th>)}
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[#F4F7FC]">
-                                  {activeFeatures.map(item => (
-                                    <tr key={item.id} className={`hover:bg-[#F8FAFF] ${item.id === session.activeFeatureId ? 'bg-[#EEF4FF]/40' : ''}`}>
-                                      <td className="px-4 py-1.5 font-medium text-[#172033] text-xs truncate max-w-[200px]">
-                                        {item.id === session.activeFeatureId && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#3366FF] mr-2"></span>}
-                                        {lang==='en'?item.title_en:item.title_bg}
-                                      </td>
-                                      {criteriaKeys.map(k => {
-                                        const validVotes = joinedParticipants.map(p => getActiveScore(p.id, item.id)?.[k]).filter(v => v != null);
-                                        const spread = validVotes.length ? Math.max(...validVotes) - Math.min(...validVotes) : 0;
-                                        let bgClass = "bg-[#F8FAFF] text-[#A0ABBF]";
-                                        if (validVotes.length > 0) {
-                                           if (spread <= 2) bgClass = "bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] font-bold";
-                                           else if (spread <= 5) bgClass = "bg-[#FEF3C7] text-[#D97706] border border-[#FDE68A] font-bold";
-                                           else bgClass = "bg-[#FEF2F2] text-[#EF4444] border border-[#FECACA] font-bold";
-                                        }
-                                        return (
-                                          <td key={k} className="px-2 py-1.5 text-center">
-                                            <span className={`inline-flex items-center justify-center w-full h-5 rounded text-[10px] ${bgClass}`}>{validVotes.length ? spread : '-'}</span>
-                                          </td>
-                                        );
-                                      })}
-                                    </tr>
+                     {/* Tabs */}
+                     <div className="bg-white rounded-[18px] shadow-sm border border-[#D9E2F0] overflow-hidden">
+                        <div className="flex border-b border-[#D9E2F0] bg-[#F8FAFF]">
+                           <button onClick={() => setActiveTrainerTab('progress')} className={`flex-1 py-3 px-4 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTrainerTab === 'progress' ? 'text-[#3366FF] bg-white border-[#3366FF]' : 'text-[#7A89A3] hover:text-[#172033] border-transparent'}`}>
+                              {t.featureProgressTitle}
+                           </button>
+                           <button onClick={() => setActiveTrainerTab('heatmap')} className={`flex-1 py-3 px-4 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTrainerTab === 'heatmap' ? 'text-[#3366FF] bg-white border-[#3366FF]' : 'text-[#7A89A3] hover:text-[#172033] border-transparent'}`}>
+                              {t.heatmapTitle}
+                           </button>
+                           <button onClick={() => setActiveTrainerTab('cutline')} className={`flex-1 py-3 px-4 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTrainerTab === 'cutline' ? 'text-[#3366FF] bg-white border-[#3366FF]' : 'text-[#7A89A3] hover:text-[#172033] border-transparent'}`}>
+                              {t.releaseSimTitle}
+                           </button>
+                           <button onClick={() => setActiveTrainerTab('timeline')} className={`flex-1 py-3 px-4 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTrainerTab === 'timeline' ? 'text-[#3366FF] bg-white border-[#3366FF]' : 'text-[#7A89A3] hover:text-[#172033] border-transparent'}`}>
+                              {t.timelineTitle}
+                           </button>
+                        </div>
+                        
+                        <div className="p-0 bg-white max-h-[350px] overflow-y-auto">
+                           {activeTrainerTab === 'progress' && (
+                             <table className="w-full text-sm text-left">
+                               <thead className="text-[9px] text-[#7A89A3] uppercase bg-[#F8FAFF] sticky top-0 border-b border-[#D9E2F0]">
+                                 <tr>
+                                    <th className="px-5 py-2.5 font-bold">{t.colFeature}</th>
+                                    <th className="px-4 py-2.5 font-bold text-center">{t.colSubmittedCnt}</th>
+                                    <th className="px-4 py-2.5 font-bold text-center">{t.colRevealed}</th>
+                                    <th className="px-5 py-2.5 font-bold text-right">{t.colAvgWsjf}</th>
+                                 </tr>
+                               </thead>
+                               <tbody className="divide-y divide-[#F4F7FC]">
+                                 {activeFeatures.map(item => {
+                                   const fState = featureRoundState[item.id] || { status: 'notStarted', resultsRevealed: false };
+                                   const submittedCnt = joinedParticipants.filter(p => participantScores[p.id]?.[item.id]?.initial?.submitted).length;
+                                   const jsAvg = calcCriterionStats(item.id, 'js').avg;
+                                   const codAvg = calcCriterionStats(item.id, 'bv').avg + calcCriterionStats(item.id, 'tc').avg + calcCriterionStats(item.id, 'rr').avg;
+                                   const wsjf = jsAvg > 0 ? (codAvg / jsAvg).toFixed(2) : '-';
+                                   return (
+                                     <tr key={item.id} className={`hover:bg-[#F8FAFF] ${item.id === session.activeFeatureId ? 'bg-[#EEF4FF]/40' : ''}`}>
+                                       <td className="px-5 py-2.5 font-medium text-[#172033] text-[13px] flex items-center">
+                                         {item.id === session.activeFeatureId && <div className="w-1.5 h-1.5 rounded-full bg-[#3366FF] mr-2"></div>}
+                                         {lang === 'en' ? item.title_en : item.title_bg}
+                                       </td>
+                                       <td className="px-4 py-2.5 text-center text-[#53627A] font-mono text-xs">{submittedCnt} / {joinedParticipants.length}</td>
+                                       <td className="px-4 py-2.5 text-center">
+                                         {fState.resultsRevealed ? <CheckCircle2 className="w-3.5 h-3.5 text-[#12B981] mx-auto" /> : <span className="text-[#D9E2F0]">-</span>}
+                                       </td>
+                                       <td className="px-5 py-2.5 text-right font-mono font-bold text-[#3366FF]">{submittedCnt > 0 ? wsjf : '-'}</td>
+                                     </tr>
+                                   );
+                                 })}
+                                 {activeFeatures.length === 0 && <tr><td colSpan="4" className="text-center p-6 text-sm text-[#7A89A3]">{t.emptyScenario}</td></tr>}
+                               </tbody>
+                             </table>
+                           )}
+
+                           {activeTrainerTab === 'heatmap' && (
+                             <div className="p-4">
+                               <div className="flex flex-wrap gap-4 mb-4 text-[9px] uppercase tracking-wider font-bold px-2">
+                                 <span className="flex items-center text-[#059669]"><span className="w-2.5 h-2.5 rounded bg-[#ECFDF5] border border-[#A7F3D0] mr-1.5"></span> {t.lowDis} (0-2)</span>
+                                 <span className="flex items-center text-[#D97706]"><span className="w-2.5 h-2.5 rounded bg-[#FEF3C7] border border-[#FDE68A] mr-1.5"></span> {t.medDis} (3-5)</span>
+                                 <span className="flex items-center text-[#EF4444]"><span className="w-2.5 h-2.5 rounded bg-[#FEF2F2] border border-[#FECACA] mr-1.5"></span> {t.highDis} (6+)</span>
+                               </div>
+                               <div className="overflow-x-auto border border-[#D9E2F0] rounded-lg">
+                                 <table className="w-full text-sm text-left">
+                                   <thead className="text-[9px] text-[#7A89A3] uppercase bg-[#F8FAFF] border-b border-[#D9E2F0]">
+                                     <tr>
+                                       <th className="px-4 py-2 font-bold">{t.colFeature}</th>
+                                       {criteriaKeys.map(k => <th key={k} className="px-2 py-2 text-center w-16">{k.toUpperCase()}</th>)}
+                                     </tr>
+                                   </thead>
+                                   <tbody className="divide-y divide-[#F4F7FC]">
+                                     {activeFeatures.map(item => (
+                                       <tr key={item.id} className={`hover:bg-[#F8FAFF] ${item.id === session.activeFeatureId ? 'bg-[#EEF4FF]/40' : ''}`}>
+                                         <td className="px-4 py-1.5 font-medium text-[#172033] text-xs truncate max-w-[200px]">
+                                           {item.id === session.activeFeatureId && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#3366FF] mr-2"></span>}
+                                           {lang==='en'?item.title_en:item.title_bg}
+                                         </td>
+                                         {criteriaKeys.map(k => {
+                                           const validVotes = joinedParticipants.map(p => getActiveScore(p.id, item.id)?.[k]).filter(v => v != null);
+                                           const spread = validVotes.length ? Math.max(...validVotes) - Math.min(...validVotes) : 0;
+                                           let bgClass = "bg-[#F8FAFF] text-[#A0ABBF]";
+                                           if (validVotes.length > 0) {
+                                              if (spread <= 2) bgClass = "bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] font-bold";
+                                              else if (spread <= 5) bgClass = "bg-[#FEF3C7] text-[#D97706] border border-[#FDE68A] font-bold";
+                                              else bgClass = "bg-[#FEF2F2] text-[#EF4444] border border-[#FECACA] font-bold";
+                                           }
+                                           return (
+                                             <td key={k} className="px-2 py-1.5 text-center">
+                                               <span className={`inline-flex items-center justify-center w-full h-5 rounded text-[10px] ${bgClass}`}>{validVotes.length ? spread : '-'}</span>
+                                             </td>
+                                           );
+                                         })}
+                                       </tr>
+                                     ))}
+                                     {activeFeatures.length === 0 && <tr><td colSpan="5" className="text-center p-4 text-sm text-[#7A89A3]">{t.emptyScenario}</td></tr>}
+                                   </tbody>
+                                 </table>
+                               </div>
+                             </div>
+                           )}
+
+                           {activeTrainerTab === 'cutline' && (
+                             <div className="p-6">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                   <div className="bg-[#F8FAFF] p-4 rounded-[14px] border border-[#D9E2F0] text-center">
+                                      <p className="text-[10px] text-[#7A89A3] uppercase font-bold tracking-wider mb-1">{t.usedCapacity}</p>
+                                      <p className="text-3xl font-bold text-[#172033] font-mono">{getCalculatedBacklog().filter(i=>i.included).reduce((s,i)=>s+(Number(i.js)||0),0).toFixed(1)}</p>
+                                   </div>
+                                   <div className="bg-[#EEF4FF] p-4 rounded-[14px] border border-[#C6D4EA] text-center">
+                                      <p className="text-[10px] text-[#3366FF] uppercase font-bold tracking-wider mb-1">{t.remCapacity}</p>
+                                      <p className="text-3xl font-bold text-[#3366FF] font-mono">{(session.capacity - getCalculatedBacklog().filter(i=>i.included).reduce((s,i)=>s+(Number(i.js)||0),0)).toFixed(1)}</p>
+                                   </div>
+                                   <div className="bg-[#ECFDF5] p-4 rounded-[14px] border border-[#A7F3D0] text-center">
+                                      <p className="text-[10px] text-[#059669] uppercase font-bold tracking-wider mb-1">{t.includedItems}</p>
+                                      <p className="text-3xl font-bold text-[#059669] font-mono">{getCalculatedBacklog().filter(i=>i.included).length}</p>
+                                   </div>
+                                   <div className="bg-[#FEF2F2] p-4 rounded-[14px] border border-[#FECACA] text-center">
+                                      <p className="text-[10px] text-[#EF4444] uppercase font-bold tracking-wider mb-1">{t.belowItems}</p>
+                                      <p className="text-3xl font-bold text-[#EF4444] font-mono">{getCalculatedBacklog().length - getCalculatedBacklog().filter(i=>i.included).length}</p>
+                                   </div>
+                                </div>
+                                <div className="space-y-1 max-h-[150px] overflow-y-auto pr-2">
+                                  {getCalculatedBacklog().map((item, idx) => (
+                                     <div key={item.id} className="flex justify-between items-center text-xs py-1.5 border-b border-[#F4F7FC] last:border-0">
+                                        <span className="flex items-center text-[#53627A]">
+                                           <span className="w-5 text-right mr-3 text-[#A0ABBF] font-mono">{idx + 1}.</span> 
+                                           <span className={`font-medium ${item.included ? 'text-[#172033]' : 'text-[#A0ABBF]'}`}>{lang==='en'?item.title_en:item.title_bg}</span>
+                                        </span>
+                                        <span className="font-mono text-[#7A89A3]">JS: {item.js.toFixed(1)} <span className="mx-2 border-l border-[#D9E2F0]"></span> WSJF: {item.wsjf}</span>
+                                     </div>
                                   ))}
-                                  {activeFeatures.length === 0 && <tr><td colSpan="5" className="text-center p-4 text-sm text-[#7A89A3]">{t.emptyScenario}</td></tr>}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-
-                        {activeTrainerTab === 'cutline' && (
-                          <div className="p-6">
-                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                <div className="bg-[#F8FAFF] p-4 rounded-[14px] border border-[#D9E2F0] text-center">
-                                   <p className="text-[10px] text-[#7A89A3] uppercase font-bold tracking-wider mb-1">{t.usedCapacity}</p>
-                                   <p className="text-3xl font-bold text-[#172033] font-mono">{getCalculatedBacklog().filter(i=>i.included).reduce((s,i)=>s+(Number(i.js)||0),0).toFixed(1)}</p>
-                                </div>
-                                <div className="bg-[#EEF4FF] p-4 rounded-[14px] border border-[#C6D4EA] text-center">
-                                   <p className="text-[10px] text-[#3366FF] uppercase font-bold tracking-wider mb-1">{t.remCapacity}</p>
-                                   <p className="text-3xl font-bold text-[#3366FF] font-mono">{(session.capacity - getCalculatedBacklog().filter(i=>i.included).reduce((s,i)=>s+(Number(i.js)||0),0)).toFixed(1)}</p>
-                                </div>
-                                <div className="bg-[#ECFDF5] p-4 rounded-[14px] border border-[#A7F3D0] text-center">
-                                   <p className="text-[10px] text-[#059669] uppercase font-bold tracking-wider mb-1">{t.includedItems}</p>
-                                   <p className="text-3xl font-bold text-[#059669] font-mono">{getCalculatedBacklog().filter(i=>i.included).length}</p>
-                                </div>
-                                <div className="bg-[#FEF2F2] p-4 rounded-[14px] border border-[#FECACA] text-center">
-                                   <p className="text-[10px] text-[#EF4444] uppercase font-bold tracking-wider mb-1">{t.belowItems}</p>
-                                   <p className="text-3xl font-bold text-[#EF4444] font-mono">{getCalculatedBacklog().length - getCalculatedBacklog().filter(i=>i.included).length}</p>
                                 </div>
                              </div>
-                             <div className="space-y-1 max-h-[150px] overflow-y-auto pr-2">
-                               {getCalculatedBacklog().map((item, idx) => (
-                                  <div key={item.id} className="flex justify-between items-center text-xs py-1.5 border-b border-[#F4F7FC] last:border-0">
-                                     <span className="flex items-center text-[#53627A]">
-                                        <span className="w-5 text-right mr-3 text-[#A0ABBF] font-mono">{idx + 1}.</span> 
-                                        <span className={`font-medium ${item.included ? 'text-[#172033]' : 'text-[#A0ABBF]'}`}>{lang==='en'?item.title_en:item.title_bg}</span>
-                                     </span>
-                                     <span className="font-mono text-[#7A89A3]">JS: {item.js.toFixed(1)} <span className="mx-2 border-l border-[#D9E2F0]"></span> WSJF: {item.wsjf}</span>
-                                  </div>
-                               ))}
-                             </div>
-                          </div>
-                        )}
+                           )}
 
-                        {activeTrainerTab === 'timeline' && (
-                          <div className="p-4">
-                             {sessionTimeline.length === 0 ? (
-                                <p className="text-center text-xs text-[#A0ABBF] py-6">{t.noData}</p>
-                             ) : (
-                                <div className="space-y-3">
-                                   {sessionTimeline.map(ev => (
-                                      <div key={ev.id} className="flex items-start text-xs border-b border-[#F4F7FC] pb-2 last:border-0">
-                                         <span className="text-[#A0ABBF] font-mono w-16 shrink-0">{ev.timestamp}</span>
-                                         <div className="flex-1">
-                                            <span className="text-[#3366FF] font-bold mr-2 uppercase text-[9px] bg-[#EEF4FF] px-1.5 py-0.5 rounded">{ev.type}</span>
-                                            <span className="text-[#53627A]">{ev.desc}</span>
-                                            {ev.featureId && <span className="ml-2 text-[#A0ABBF]">({activeFeatures.find(i=>i.id===ev.featureId)?.title_en || 'Feature'})</span>}
+                           {activeTrainerTab === 'timeline' && (
+                             <div className="p-4">
+                                {sessionTimeline.length === 0 ? (
+                                   <p className="text-center text-xs text-[#A0ABBF] py-6">{t.noData}</p>
+                                ) : (
+                                   <div className="space-y-3">
+                                      {sessionTimeline.map(ev => (
+                                         <div key={ev.id} className="flex items-start text-xs border-b border-[#F4F7FC] pb-2 last:border-0">
+                                            <span className="text-[#A0ABBF] font-mono w-16 shrink-0">{ev.timestamp}</span>
+                                            <div className="flex-1">
+                                               <span className="text-[#3366FF] font-bold mr-2 uppercase text-[9px] bg-[#EEF4FF] px-1.5 py-0.5 rounded">{ev.type}</span>
+                                               <span className="text-[#53627A]">{ev.desc}</span>
+                                               {ev.featureId && <span className="ml-2 text-[#A0ABBF]">({activeFeatures.find(i=>i.id===ev.featureId)?.title_en || 'Feature'})</span>}
+                                            </div>
                                          </div>
-                                      </div>
-                                   ))}
-                                </div>
-                             )}
-                          </div>
-                        )}
-                     </div>
-                  </div>
-
-               </div>
-               
-               {/* 30% RIGHT SUPPORT RAIL */}
-               <div className="lg:col-span-4 flex flex-col gap-5">
-                  
-                  {/* Workshop Controls */}
-                  <div className="bg-white rounded-[18px] shadow-sm border border-[#D9E2F0] p-5">
-                     <div className="flex justify-between items-center bg-[#F8FAFF] p-2 rounded-lg border border-[#D9E2F0] mb-4">
-                        <button onClick={() => changeFeature(-1)} className="p-1.5 text-[#7A89A3] hover:text-[#172033] hover:bg-white rounded transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-                        <span className="text-xs font-bold text-[#172033] text-center w-full block">Nav Feature</span>
-                        <button onClick={() => changeFeature(1)} className="p-1.5 text-[#7A89A3] hover:text-[#172033] hover:bg-white rounded transition-colors"><ChevronRight className="w-4 h-4" /></button>
-                     </div>
-
-                     <div className="mb-4">
-                       <button onClick={() => primaryAction.act()} className={`w-full py-3 text-xs font-bold text-white uppercase tracking-wider rounded-xl shadow-sm transition-all flex items-center justify-center ${primaryAction.bg}`}>
-                         {primaryAction.icon} {primaryAction.label}
-                       </button>
-                     </div>
-
-                     <div className="grid grid-cols-2 gap-2 mb-4">
-                        <button onClick={() => updateFeatureStatus('scoringOpen')} className={`py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${activeFeatState?.status === 'scoringOpen' ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]' : 'bg-white text-[#53627A] border-[#D9E2F0] hover:border-[#3366FF]'}`}>Score</button>
-                        <button onClick={() => updateFeatureStatus('votingLocked')} className={`py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${activeFeatState?.status === 'votingLocked' ? 'bg-[#FEF3C7] text-[#D97706] border-[#FDE68A]' : 'bg-white text-[#53627A] border-[#D9E2F0] hover:border-[#3366FF]'}`}>Lock</button>
-                        <button onClick={() => updateFeatureStatus('resultsRevealed')} className={`py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${activeFeatState?.status === 'resultsRevealed' ? 'bg-[#F3E8FF] text-[#6D28D9] border-[#E9D5FF]' : 'bg-white text-[#53627A] border-[#D9E2F0] hover:border-[#3366FF]'}`}>Reveal</button>
-                        <button onClick={() => updateFeatureStatus('discussion')} className={`py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${activeFeatState?.status === 'discussion' ? 'bg-[#EEF4FF] text-[#1D4ED8] border-[#BFDBFE]' : 'bg-white text-[#53627A] border-[#D9E2F0] hover:border-[#3366FF]'}`}>Discuss</button>
-                     </div>
-
-                     <div className="flex gap-2 border-t border-[#F4F7FC] pt-4">
-                       <button onClick={() => updateFeatureStatus('reScoreOpen')} className="flex-1 py-2 text-[10px] font-bold text-[#D97706] uppercase tracking-wider bg-white border border-[#FDE68A] hover:bg-[#FEF3C7] rounded-lg transition-colors">Re-score</button>
-                       <button onClick={() => setShowResetConfirm(true)} className="flex-1 py-2 text-[10px] font-bold text-[#EF4444] uppercase tracking-wider bg-white border border-[#FECACA] hover:bg-[#FEF2F2] rounded-lg transition-colors">Reset</button>
-                     </div>
-                  </div>
-
-                  {/* Prompts */}
-                  <div className="bg-white rounded-[18px] shadow-sm border border-[#D9E2F0] flex flex-col overflow-hidden max-h-[400px]">
-                    <div className="p-4 bg-[#F8FAFF] border-b border-[#D9E2F0] flex justify-between items-center sticky top-0 z-10">
-                      <h3 className="text-[11px] font-bold text-[#172033] uppercase tracking-wider flex items-center"><AlertTriangle className="w-3.5 h-3.5 mr-1.5 text-[#F59E0B]" /> Prompts</h3>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
-                      {aiPrompts.length === 0 ? (
-                          <div className="text-center text-[#A0ABBF] py-8 text-xs">No active prompts right now.</div>
-                      ) : (
-                        aiPrompts.map(prompt => {
-                           let borderClass = 'border-[#C6D4EA] border-l-[#3366FF]';
-                           let badgeClass = 'bg-[#EEF4FF] text-[#3366FF]';
-                           if (prompt.level === 'Critical') { borderClass = 'border-[#FECACA] border-l-[#EF4444]'; badgeClass = 'bg-[#FEF2F2] text-[#EF4444]'; }
-                           if (prompt.level === 'Warning') { borderClass = 'border-[#FDE68A] border-l-[#F59E0B]'; badgeClass = 'bg-[#FEF3C7] text-[#D97706]'; }
-                           if (prompt.level === 'Info') { borderClass = 'border-[#A7F3D0] border-l-[#10B981]'; badgeClass = 'bg-[#ECFDF5] text-[#059669]'; }
-                           
-                           return (
-                             <div key={prompt.id} className={`p-3.5 rounded-xl border border-l-4 shadow-sm bg-white ${borderClass}`}>
-                               <div className="flex justify-between items-start mb-2">
-                                   <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${badgeClass}`}>{prompt.category}</span>
-                               </div>
-                               <h4 className="font-bold text-[#172033] text-sm mb-1.5 leading-tight">{prompt.title}</h4>
-                               <p className="text-xs text-[#53627A] mb-3 leading-relaxed">{prompt.message}</p>
-                               <div className="bg-[#F8FAFF] p-2.5 rounded-lg border border-[#D9E2F0] text-xs font-medium text-[#172033] mb-2 leading-relaxed">
-                                   <MessageSquare className="w-3.5 h-3.5 inline-block mr-1.5 text-[#3366FF] -mt-0.5"/> {prompt.question}
-                               </div>
+                                      ))}
+                                   </div>
+                                )}
                              </div>
-                           );
-                        })
-                      )}
-                    </div>
-                  </div>
+                           )}
+                        </div>
+                     </div>
 
-                  {/* Notes */}
-                  <div className="bg-white rounded-[18px] shadow-sm border border-[#D9E2F0] overflow-hidden flex flex-col">
-                    <div className="p-3 bg-[#F8FAFF] border-b border-[#D9E2F0] font-bold text-[#53627A] flex items-center text-[10px] uppercase tracking-wider">
-                      <Edit3 className="w-3 h-3 mr-1.5 text-[#7A89A3]" /> {t.notesTitle}
-                    </div>
-                    <textarea 
-                      className="w-full h-[120px] p-4 outline-none resize-y text-xs text-[#172033] placeholder-[#A0ABBF] leading-relaxed"
-                      placeholder={t.notesPlaceholder}
-                      value={trainerNotes[session.activeFeatureId] || ''}
-                      onChange={e => setTrainerNotes(prev => ({...prev, [session.activeFeatureId]: e.target.value}))}
-                    />
+                  </div>
+                  
+                  {/* 30% RIGHT SUPPORT RAIL */}
+                  <div className="lg:col-span-4 flex flex-col gap-5">
+                     
+                     {/* Workshop Controls */}
+                     <div className="bg-white rounded-[18px] shadow-sm border border-[#D9E2F0] p-5">
+                        <div className="flex justify-between items-center bg-[#F8FAFF] p-2 rounded-lg border border-[#D9E2F0] mb-4">
+                           <button onClick={() => changeFeature(-1)} className="p-1.5 text-[#7A89A3] hover:text-[#172033] hover:bg-white rounded transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+                           <span className="text-xs font-bold text-[#172033] text-center w-full block">Nav Feature</span>
+                           <button onClick={() => changeFeature(1)} className="p-1.5 text-[#7A89A3] hover:text-[#172033] hover:bg-white rounded transition-colors"><ChevronRight className="w-4 h-4" /></button>
+                        </div>
+
+                        <div className="mb-4">
+                          <button onClick={() => primaryAction.act()} className={`w-full py-3 text-xs font-bold text-white uppercase tracking-wider rounded-xl shadow-sm transition-all flex items-center justify-center ${primaryAction.bg}`}>
+                            {primaryAction.icon} {primaryAction.label}
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                           <button onClick={() => updateFeatureStatus('scoringOpen')} className={`py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${activeFeatState?.status === 'scoringOpen' ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]' : 'bg-white text-[#53627A] border-[#D9E2F0] hover:border-[#3366FF]'}`}>Score</button>
+                           <button onClick={() => updateFeatureStatus('votingLocked')} className={`py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${activeFeatState?.status === 'votingLocked' ? 'bg-[#FEF3C7] text-[#D97706] border-[#FDE68A]' : 'bg-white text-[#53627A] border-[#D9E2F0] hover:border-[#3366FF]'}`}>Lock</button>
+                           <button onClick={() => updateFeatureStatus('resultsRevealed')} className={`py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${activeFeatState?.status === 'resultsRevealed' ? 'bg-[#F3E8FF] text-[#6D28D9] border-[#E9D5FF]' : 'bg-white text-[#53627A] border-[#D9E2F0] hover:border-[#3366FF]'}`}>Reveal</button>
+                           <button onClick={() => updateFeatureStatus('discussion')} className={`py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${activeFeatState?.status === 'discussion' ? 'bg-[#EEF4FF] text-[#1D4ED8] border-[#BFDBFE]' : 'bg-white text-[#53627A] border-[#D9E2F0] hover:border-[#3366FF]'}`}>Discuss</button>
+                        </div>
+
+                        <div className="flex gap-2 border-t border-[#F4F7FC] pt-4">
+                          <button onClick={() => updateFeatureStatus('reScoreOpen')} className="flex-1 py-2 text-[10px] font-bold text-[#D97706] uppercase tracking-wider bg-white border border-[#FDE68A] hover:bg-[#FEF3C7] rounded-lg transition-colors">Re-score</button>
+                          <button onClick={() => setShowResetConfirm(true)} className="flex-1 py-2 text-[10px] font-bold text-[#EF4444] uppercase tracking-wider bg-white border border-[#FECACA] hover:bg-[#FEF2F2] rounded-lg transition-colors">Reset</button>
+                        </div>
+                     </div>
+
+                     {/* Prompts */}
+                     <div className="bg-white rounded-[18px] shadow-sm border border-[#D9E2F0] flex flex-col overflow-hidden max-h-[400px]">
+                       <div className="p-4 bg-[#F8FAFF] border-b border-[#D9E2F0] flex justify-between items-center sticky top-0 z-10">
+                         <h3 className="text-[11px] font-bold text-[#172033] uppercase tracking-wider flex items-center"><AlertTriangle className="w-3.5 h-3.5 mr-1.5 text-[#F59E0B]" /> Prompts</h3>
+                       </div>
+                       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
+                         {aiPrompts.length === 0 ? (
+                             <div className="text-center text-[#A0ABBF] py-8 text-xs">No active prompts right now.</div>
+                         ) : (
+                           aiPrompts.map(prompt => {
+                              let borderClass = 'border-[#C6D4EA] border-l-[#3366FF]';
+                              let badgeClass = 'bg-[#EEF4FF] text-[#3366FF]';
+                              if (prompt.level === 'Critical') { borderClass = 'border-[#FECACA] border-l-[#EF4444]'; badgeClass = 'bg-[#FEF2F2] text-[#EF4444]'; }
+                              if (prompt.level === 'Warning') { borderClass = 'border-[#FDE68A] border-l-[#F59E0B]'; badgeClass = 'bg-[#FEF3C7] text-[#D97706]'; }
+                              if (prompt.level === 'Info') { borderClass = 'border-[#A7F3D0] border-l-[#10B981]'; badgeClass = 'bg-[#ECFDF5] text-[#059669]'; }
+                              
+                              return (
+                                <div key={prompt.id} className={`p-3.5 rounded-xl border border-l-4 shadow-sm bg-white ${borderClass}`}>
+                                  <div className="flex justify-between items-start mb-2">
+                                      <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${badgeClass}`}>{prompt.category}</span>
+                                  </div>
+                                  <h4 className="font-bold text-[#172033] text-sm mb-1.5 leading-tight">{prompt.title}</h4>
+                                  <p className="text-xs text-[#53627A] mb-3 leading-relaxed">{prompt.message}</p>
+                                  <div className="bg-[#F8FAFF] p-2.5 rounded-lg border border-[#D9E2F0] text-xs font-medium text-[#172033] mb-2 leading-relaxed">
+                                      <MessageSquare className="w-3.5 h-3.5 inline-block mr-1.5 text-[#3366FF] -mt-0.5"/> {prompt.question}
+                                  </div>
+                                </div>
+                              );
+                           })
+                         )}
+                       </div>
+                     </div>
+
+                     {/* Notes */}
+                     <div className="bg-white rounded-[18px] shadow-sm border border-[#D9E2F0] overflow-hidden flex flex-col">
+                       <div className="p-3 bg-[#F8FAFF] border-b border-[#D9E2F0] font-bold text-[#53627A] flex items-center text-[10px] uppercase tracking-wider">
+                         <Edit3 className="w-3 h-3 mr-1.5 text-[#7A89A3]" /> {t.notesTitle}
+                       </div>
+                       <textarea 
+                         className="w-full h-[120px] p-4 outline-none resize-y text-xs text-[#172033] placeholder-[#A0ABBF] leading-relaxed"
+                         placeholder={t.notesPlaceholder}
+                         value={trainerNotes[session.activeFeatureId] || ''}
+                         onChange={e => setTrainerNotes(prev => ({...prev, [session.activeFeatureId]: e.target.value}))}
+                       />
+                     </div>
                   </div>
                </div>
-            </div>
+            )}
 
             {/* =====================================================================
                 FULL WIDTH SESSION SETUP & SCENARIOS AT THE BOTTOM
