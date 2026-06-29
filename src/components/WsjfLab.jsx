@@ -14,6 +14,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 
+// 🔴 Твоите реални ключове за facilume 🔴
 const userFirebaseConfig = {
   apiKey: "AIzaSyC7AFoL5wZhxceS8XxZ_06rmBMJCGRjKT0",
   authDomain: "facilume.firebaseapp.com",
@@ -24,6 +25,7 @@ const userFirebaseConfig = {
   measurementId: "G-DLHVG45W0J"
 };
 
+// Защита: Ако сме в Canvas среда използваме глобалния config, иначе твоя (за Vercel).
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'facilume-wsjf';
 
@@ -39,12 +41,13 @@ try {
   firebaseInitError = e.message;
   console.error("Firebase init error:", e);
 }
+// ==========================
 
 const translations = {
   en: {
     appTitle: "WSJF Lab",
     appSubtitle: "A training simulator for prioritization under uncertainty",
-    partInstructions: "Score each feature using WSJF. Focus on relative value, urgency, risk reduction, opportunity enablement, and effort.",
+    partInstructions: "Score each feature using WSJF. Focus on relative value, urgency, risk reduction, opportunity enablement, and effort. Do not try to be perfect. Try to be economically honest.",
     colId: "ID",
     colFeature: "Feature",
     colBV: "Business Value",
@@ -152,12 +155,6 @@ const translations = {
     btnCopy: "Copy",
     btnCopied: "Copied!",
     scanQr: "Or scan QR code to join:",
-    trainerAccessTitle: "Trainer Access",
-    trainerAccessSub: "Enter PIN to access the facilitation cockpit.",
-    trainerPinLabel: "Trainer PIN (Use 0000)",
-    unlockTrainer: "Unlock Trainer View",
-    incorrectPin: "Incorrect Trainer PIN.",
-    backToParticipant: "Back to Participant Join",
     tabScenario: "Scenario Builder",
     tabRoles: "Role Setup",
     tabSettings: "Session Settings",
@@ -1095,7 +1092,6 @@ export default function App() {
         if (activeFeatState.status === 'discussion') return { label: t.btnRescore, act: () => updateFeatureStatus('reScoreOpen'), bg: 'bg-[#F59E0B]', icon: <RotateCcw className="w-4 h-4 mr-2"/> };
         if (activeFeatState.status === 'reScoreOpen') return { label: t.btnLock, act: () => updateFeatureStatus('votingLocked'), bg: 'bg-[#F59E0B]', icon: <Lock className="w-4 h-4 mr-2"/> };
     }
-    if (session.lifecycleStatus !== 'ended') return { label: t.btnEndSession, act: () => setShowEndSessionModal(true), bg: 'bg-[#EF4444]', icon: <XCircle className="w-4 h-4 mr-2"/> };
     return { label: "Session Ended", act: () => {}, bg: 'bg-[#7A89A3]', icon: <CheckCircle2 className="w-4 h-4 mr-2"/> };
   };
   const primaryAction = getNextRecommendedAction();
@@ -1658,9 +1654,6 @@ export default function App() {
                  <button onClick={() => setAccessMode('participantPreview')} className="text-[10px] font-bold text-[#5B5FEF] uppercase tracking-wider hover:underline flex items-center ml-2">
                     <Eye className="w-3.5 h-3.5 mr-1.5"/> {t.previewPart}
                  </button>
-                 <button onClick={() => setAccessMode('trainerLocked')} className="text-[10px] font-bold text-[#7A89A3] hover:text-[#172033] uppercase tracking-wider flex items-center ml-2">
-                    <Lock className="w-3.5 h-3.5 mr-1.5"/> {t.lockTrainer}
-                 </button>
                </div>
             </div>
 
@@ -1935,6 +1928,16 @@ export default function App() {
                           <button onClick={() => primaryAction.act()} className={`w-full py-3 text-xs font-bold text-white uppercase tracking-wider rounded-xl shadow-sm transition-all flex items-center justify-center ${primaryAction.bg}`}>
                             {primaryAction.icon} {primaryAction.label}
                           </button>
+                          
+                          {/* НОВИЯТ, ПОСТОЯННО ВИДИМ БУТОН "END SESSION" */}
+                          {session.lifecycleStatus === 'inProgress' && (
+                             <button 
+                                onClick={() => setShowEndSessionModal(true)} 
+                                className="w-full mt-3 py-2 text-[10px] font-bold text-[#EF4444] uppercase tracking-wider bg-[#FEF2F2] border border-[#FECACA] hover:bg-[#FEE2E2] rounded-xl transition-colors flex items-center justify-center shadow-sm"
+                             >
+                                <XCircle className="w-3.5 h-3.5 mr-2" /> {t.btnEndSession}
+                             </button>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 mb-4">
