@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   Calculator, Users, UserCog, Globe, AlertCircle, 
   CheckCircle2, XCircle, TrendingUp, AlertTriangle, 
@@ -11,8 +11,8 @@ import {
 
 // === FIREBASE ИНТЕГРАЦИЯ ===
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc, deleteField } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, linkWithPopup, signOut } from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc, deleteField, collection, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 
 // 🔴 Твоите реални ключове за facilume 🔴
 const userFirebaseConfig = {
@@ -155,12 +155,34 @@ const translations = {
     btnCopy: "Copy",
     btnCopied: "Copied!",
     scanQr: "Or scan QR code to join:",
+    trainerAccessTitle: "Trainer Access",
+    trainerAccessSub: "Enter PIN or sign in with Google for persistent scenario library.",
+    trainerPinLabel: "PIN (Use 0000)",
+    unlockTrainer: "Unlock",
+    incorrectPin: "Incorrect PIN.",
+    backToParticipant: "Back to lobby",
+    signInGoogle: "Sign in with Google",
+    signInGoogleUnlock: "Sign in with Google and unlock",
+    signOutGoogle: "Sign out",
+    trainerAccount: "Trainer account",
+    anonymousTrainer: "Anonymous local trainer",
+    persistentTrainer: "Google account synced",
+    scenarioSyncHint: "Sign in with Google to use custom scenarios from another computer.",
+    authWorking: "Working...",
+    authFailed: "Authentication failed. Check Firebase Auth settings.",
     tabScenario: "Scenario Builder",
     tabRoles: "Role Setup",
     tabSettings: "Session Settings",
     scenarioSelector: "Active Scenario",
     scenarioBuiltIn: "Built-in",
     scenarioCustom: "Custom",
+    scenarioLibrary: "Scenario Library",
+    scenarioLibraryLoading: "Loading scenario library...",
+    scenarioLibrarySynced: "Scenario library saved.",
+    scenarioLibraryLocalOnly: "Scenario saved locally because Firestore was not available.",
+    scenarioLibraryLoadFailed: "Custom scenarios could not be loaded. Built-in scenarios are still available.",
+    btnSaveScenarioLibrary: "Save to Scenario Library",
+    scenarioSavedSuccess: "Scenario saved to your library. You can reuse it in future sessions.",
     btnDuplicate: "Duplicate to Custom",
     btnDeleteScen: "Delete Scenario",
     btnAddFeature: "Add Feature",
@@ -338,12 +360,28 @@ const translations = {
     unlockTrainer: "Отключи",
     incorrectPin: "Грешен PIN.",
     backToParticipant: "Обратно към лоби",
+    signInGoogle: "Вход с Google",
+    signInGoogleUnlock: "Вход с Google и отключване",
+    signOutGoogle: "Изход",
+    trainerAccount: "Акаунт на тренера",
+    anonymousTrainer: "Анонимен локален тренер",
+    persistentTrainer: "Синхронизиран Google акаунт",
+    scenarioSyncHint: "Влезте с Google, за да използвате персоналните сценарии от друг компютър.",
+    authWorking: "Изчакайте...",
+    authFailed: "Неуспешна автентикация. Проверете Firebase Auth настройките.",
     tabScenario: "Редактор на сценарии",
     tabRoles: "Настройка на роли",
     tabSettings: "Настройки на сесията",
     scenarioSelector: "Активен сценарий",
     scenarioBuiltIn: "Вграден",
     scenarioCustom: "Персонален",
+    scenarioLibrary: "Библиотека със сценарии",
+    scenarioLibraryLoading: "Зареждане на библиотеката със сценарии...",
+    scenarioLibrarySynced: "Библиотеката със сценарии е запазена.",
+    scenarioLibraryLocalOnly: "Сценарият беше запазен локално, защото Firestore не беше достъпен.",
+    scenarioLibraryLoadFailed: "Персоналните сценарии не можаха да бъдат заредени. Вградените сценарии са налични.",
+    btnSaveScenarioLibrary: "Запази в библиотеката със сценарии",
+    scenarioSavedSuccess: "Сценарият е запазен във вашата библиотека. Можете да го използвате в бъдещи сесии.",
     btnDuplicate: "Дублирай като персонален",
     btnDeleteScen: "Изтрий сценария",
     btnAddFeature: "Добави функционалност",
@@ -425,6 +463,92 @@ const defaultTemplates = [
   }
 ];
 
+
+const nowIso = () => new Date().toISOString();
+
+const normalizeFeature = (feature = {}, index = 0) => ({
+  id: feature.id || `f-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  order: Number.isFinite(Number(feature.order)) ? Number(feature.order) : index + 1,
+  title_en: feature.title_en || feature.titleEn || feature.title || "Untitled Feature",
+  title_bg: feature.title_bg || feature.titleBg || feature.title_en || feature.titleEn || feature.title || "Функционалност",
+  desc_en: feature.desc_en || feature.descriptionEn || feature.desc || "",
+  desc_bg: feature.desc_bg || feature.descriptionBg || feature.desc_en || feature.descriptionEn || feature.desc || "",
+  details_en: feature.details_en || feature.notes || "",
+  details_bg: feature.details_bg || feature.details_en || feature.notes || "",
+  bv: Number(feature.bv ?? feature.businessValue ?? 1) || 1,
+  tc: Number(feature.tc ?? feature.timeCriticality ?? 1) || 1,
+  rr: Number(feature.rr ?? feature.riskReduction ?? 1) || 1,
+  js: Math.max(1, Number(feature.js ?? feature.jobSize ?? 1) || 1),
+  tags: Array.isArray(feature.tags) ? feature.tags : [],
+  notes: feature.notes || "",
+  isEnabled: feature.isEnabled !== false
+});
+
+const normalizeCustomScenarioForLibrary = (scenario = {}, ownerUid = null) => {
+  const createdAt = scenario.createdAt || nowIso();
+  return {
+    ...scenario,
+    id: scenario.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    ownerUid: scenario.ownerUid || ownerUid || null,
+    nameEn: scenario.nameEn || scenario.name || "New Custom Scenario",
+    nameBg: scenario.nameBg || scenario.nameEn || scenario.name || "Нов персонален сценарий",
+    descEn: scenario.descEn || scenario.descriptionEn || "",
+    descBg: scenario.descBg || scenario.descriptionBg || scenario.descEn || scenario.descriptionEn || "",
+    contextEn: scenario.contextEn || scenario.descEn || scenario.descriptionEn || "",
+    contextBg: scenario.contextBg || scenario.descBg || scenario.descriptionBg || scenario.contextEn || "",
+    trainerHintEn: scenario.trainerHintEn || "",
+    trainerHintBg: scenario.trainerHintBg || "",
+    domain: scenario.domain || "Custom",
+    visibility: scenario.visibility || "private",
+    version: Number(scenario.version || 1),
+    isBuiltIn: false,
+    isCustom: true,
+    createdAt,
+    updatedAt: scenario.updatedAt || createdAt,
+    lastUsedAt: scenario.lastUsedAt || null,
+    features: (scenario.features || []).map(normalizeFeature)
+  };
+};
+
+const createScenarioSnapshot = (scenario = {}) => ({
+  id: scenario.id,
+  nameEn: scenario.nameEn,
+  nameBg: scenario.nameBg,
+  descEn: scenario.descEn || "",
+  descBg: scenario.descBg || "",
+  contextEn: scenario.contextEn || scenario.descEn || "",
+  contextBg: scenario.contextBg || scenario.descBg || "",
+  trainerHintEn: scenario.trainerHintEn || "",
+  trainerHintBg: scenario.trainerHintBg || "",
+  domain: scenario.domain || "Custom",
+  version: scenario.version || 1,
+  isBuiltIn: !!scenario.isBuiltIn,
+  isCustom: !!scenario.isCustom,
+  features: (scenario.features || []).map(normalizeFeature)
+});
+
+const mergeCustomScenarioLists = (...lists) => {
+  const byId = new Map();
+  lists.flat().filter(Boolean).forEach((scenario) => {
+    const normalized = normalizeCustomScenarioForLibrary(scenario, scenario.ownerUid || null);
+    const existing = byId.get(normalized.id);
+    if (!existing) {
+      byId.set(normalized.id, normalized);
+      return;
+    }
+    const existingTime = Date.parse(existing.updatedAt || existing.createdAt || 0) || 0;
+    const nextTime = Date.parse(normalized.updatedAt || normalized.createdAt || 0) || 0;
+    if (nextTime >= existingTime) byId.set(normalized.id, normalized);
+  });
+  return Array.from(byId.values()).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+};
+
+const scenarioDocRef = (database, scenarioId) =>
+  doc(database, 'artifacts', appId, 'public', 'data', 'scenarios', scenarioId);
+
+const scenariosCollectionRef = (database) =>
+  collection(database, 'artifacts', appId, 'public', 'data', 'scenarios');
+
 const criteriaKeys = ['bv', 'tc', 'rr', 'js'];
 const fibonacciScale = [1, 2, 3, 5, 8, 13, 20];
 const defaultRoleSlots = [
@@ -439,6 +563,8 @@ export default function App() {
   const [trainerPinInput, setTrainerPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
 const [trainerPin] = useState("0000");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState("");
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showScenarioChangeConfirm, setShowScenarioChangeConfirm] = useState(null);
@@ -463,22 +589,98 @@ const [trainerPin] = useState("0000");
     return () => unsub();
   }, []);
   const currentUserUid = authUser?.uid || null;
+  const isPersistentTrainerAccount = !!authUser && !authUser.isAnonymous;
 
   // SCENARIO STATE
   const [customScenarios, setCustomScenarios] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('wsjf_scenarios') || '[]'); } catch { return []; }
+    try {
+      return mergeCustomScenarioLists(JSON.parse(localStorage.getItem('wsjf_scenarios') || '[]'));
+    } catch {
+      return [];
+    }
   });
   const [activeScenarioId, setActiveScenarioId] = useState('geekbooks');
-  
+  const [scenarioLibraryStatus, setScenarioLibraryStatus] = useState('');
+  const [scenariosLoaded, setScenariosLoaded] = useState(false);
+  const scenarioWriteTimerRef = useRef(null);
+
   useEffect(() => {
-     localStorage.setItem('wsjf_scenarios', JSON.stringify(customScenarios));
+    try {
+      localStorage.setItem('wsjf_scenarios', JSON.stringify(customScenarios));
+    } catch (e) {
+      console.warn("Could not persist scenarios to localStorage", e);
+    }
+  }, [customScenarios]);
+
+  const availableScenarios = useMemo(() => {
+    return [...defaultTemplates, ...customScenarios];
   }, [customScenarios]);
 
   const activeScenario = useMemo(() => {
-     return [...defaultTemplates, ...customScenarios].find(s => s.id === activeScenarioId) || defaultTemplates[0];
-  }, [activeScenarioId, customScenarios]);
+     return availableScenarios.find(s => s.id === activeScenarioId) || defaultTemplates[0];
+  }, [activeScenarioId, availableScenarios]);
 
-  const activeFeatures = useMemo(() => activeScenario.features || [], [activeScenario]);
+  const activeFeatures = useMemo(() => (activeScenario.features || []).filter(f => f.isEnabled !== false), [activeScenario]);
+
+  useEffect(() => {
+    if (!db || !currentUserUid) {
+      setScenariosLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+    const loadScenarioLibrary = async () => {
+      setScenarioLibraryStatus('loading');
+      try {
+        const localScenarios = mergeCustomScenarioLists(JSON.parse(localStorage.getItem('wsjf_scenarios') || '[]'));
+        const q = query(scenariosCollectionRef(db), where('ownerUid', '==', currentUserUid));
+        const snapshot = await getDocs(q);
+        const remoteScenarios = snapshot.docs.map(d => normalizeCustomScenarioForLibrary({ id: d.id, ...d.data() }, currentUserUid));
+        const merged = mergeCustomScenarioLists(localScenarios, remoteScenarios);
+        if (!cancelled) {
+          setCustomScenarios(merged);
+          localStorage.setItem('wsjf_scenarios', JSON.stringify(merged));
+          setScenarioLibraryStatus('synced');
+          setScenariosLoaded(true);
+        }
+      } catch (e) {
+        console.warn("Scenario library could not be loaded from Firestore", e);
+        if (!cancelled) {
+          setScenarioLibraryStatus('loadFailed');
+          setScenariosLoaded(true);
+        }
+      }
+    };
+
+    loadScenarioLibrary();
+    return () => { cancelled = true; };
+  }, [currentUserUid]);
+
+  useEffect(() => {
+    if (!db || !currentUserUid || !scenariosLoaded) return;
+    if (scenarioWriteTimerRef.current) clearTimeout(scenarioWriteTimerRef.current);
+
+    scenarioWriteTimerRef.current = setTimeout(async () => {
+      try {
+        const customOnly = customScenarios.filter(s => !s.isBuiltIn);
+        await Promise.all(customOnly.map((scenario) => {
+          const payload = normalizeCustomScenarioForLibrary({
+            ...scenario,
+            updatedAt: scenario.updatedAt || nowIso()
+          }, currentUserUid);
+          return setDoc(scenarioDocRef(db, payload.id), payload, { merge: true });
+        }));
+        setScenarioLibraryStatus('synced');
+      } catch (e) {
+        console.warn("Scenario library could not be saved to Firestore", e);
+        setScenarioLibraryStatus('localOnly');
+      }
+    }, 800);
+
+    return () => {
+      if (scenarioWriteTimerRef.current) clearTimeout(scenarioWriteTimerRef.current);
+    };
+  }, [customScenarios, currentUserUid, scenariosLoaded]);
 
   // SESSION STATE
   const [session, setSession] = useState({
@@ -531,6 +733,19 @@ const getParticipantsFromDoc = useCallback((data) => {
   return data?.joinedParticipants || [];
 }, []);
 
+const upsertScenarioSnapshot = useCallback((snapshot) => {
+  if (!snapshot?.id || defaultTemplates.some(s => s.id === snapshot.id)) return;
+  setCustomScenarios(prev => {
+    if (prev.some(s => s.id === snapshot.id)) return prev;
+    return mergeCustomScenarioLists(prev, normalizeCustomScenarioForLibrary({
+      ...snapshot,
+      isCustom: true,
+      isBuiltIn: false,
+      ownerUid: currentUserUid || snapshot.ownerUid || null
+    }, currentUserUid));
+  });
+}, [currentUserUid]);
+
 const buildSessionPayload = useCallback((overrides = {}) => {
   const trainerUid = overrides.trainerUid || session.trainerUid || currentUserUid || null;
 
@@ -539,16 +754,19 @@ const buildSessionPayload = useCallback((overrides = {}) => {
     session: {
       ...session,
       trainerUid,
+      activeScenarioId,
+      activeScenarioSnapshot: createScenarioSnapshot(activeScenario),
       ...(overrides.session || {})
     },
     featureRoundState,
     activeScenarioId,
+    activeScenarioSnapshot: createScenarioSnapshot(activeScenario),
     roleSlots,
     participantsById: overrides.participantsById || {},
     participantScores: overrides.participantScores || participantScores || {},
     updatedAt: new Date().toISOString()
   };
-}, [session, currentUserUid, featureRoundState, activeScenarioId, roleSlots, participantScores]);
+}, [session, currentUserUid, featureRoundState, activeScenarioId, activeScenario, roleSlots, participantScores]);
 
   const logTimelineEvent = useCallback((type, desc, featureId = null) => {
     setSessionTimeline(prev => [
@@ -572,6 +790,7 @@ console.log("Auto-connect path:", `artifacts/${appId}/public/data/sessions/${sId
 const snap = await getDoc(getDbRef(sId));
           if (snap.exists()) {
              const data = snap.data();
+             if (data.session?.activeScenarioSnapshot) upsertScenarioSnapshot(data.session.activeScenarioSnapshot);
              setSession(data.session);
              setRoleSlots(data.roleSlots || []);
              setJoinedParticipants(getParticipantsFromDoc(data));
@@ -584,7 +803,7 @@ const snap = await getDoc(getDbRef(sId));
       }
     };
     autoConnect();
-  }, [db, sessionFound, accessMode, currentParticipantId, getParticipantsFromDoc]);
+  }, [db, sessionFound, accessMode, currentParticipantId, getParticipantsFromDoc, upsertScenarioSnapshot]);
 
   // Sync Features round state when scenario changes (Local Trainer)
   useEffect(() => {
@@ -611,15 +830,17 @@ const snap = await getDoc(getDbRef(sId));
         setParticipantScores(data.participantScores || {});
 
         if (accessMode === 'participant' || accessMode === 'participantPreview') {
+           if (data.session?.activeScenarioSnapshot) upsertScenarioSnapshot(data.session.activeScenarioSnapshot);
            if (data.session) setSession(data.session);
            if (data.featureRoundState) setFeatureRoundState(data.featureRoundState);
-           if (data.activeScenarioId) setActiveScenarioId(data.activeScenarioId);
+           if (data.session?.activeScenarioId) setActiveScenarioId(data.session.activeScenarioId);
+            else if (data.activeScenarioId) setActiveScenarioId(data.activeScenarioId);
            if (data.roleSlots) setRoleSlots(data.roleSlots);
         }
       }
     }, (err) => console.error("Sync error", err));
     return () => unsub();
-  }, [authUser, session.id, session.lifecycleStatus, accessMode, sessionFound, getDbRef, getParticipantsFromDoc]);
+  }, [authUser, session.id, session.lifecycleStatus, accessMode, sessionFound, getDbRef, getParticipantsFromDoc, upsertScenarioSnapshot]);
 
   // FIREBASE TRAINER STATE PUSH
   useEffect(() => {
@@ -630,10 +851,13 @@ const snap = await getDoc(getDbRef(sId));
   trainerUid: session.trainerUid || currentUserUid,
   session: {
     ...session,
-    trainerUid: session.trainerUid || currentUserUid
+    trainerUid: session.trainerUid || currentUserUid,
+    activeScenarioId,
+    activeScenarioSnapshot: createScenarioSnapshot(activeScenario)
   },
   featureRoundState,
   activeScenarioId,
+  activeScenarioSnapshot: createScenarioSnapshot(activeScenario),
   roleSlots,
   updatedAt: new Date().toISOString()
 }, { merge: true });
@@ -641,7 +865,7 @@ const snap = await getDoc(getDbRef(sId));
       };
       pushState();
     }
-  }, [session, featureRoundState, activeScenarioId, roleSlots, accessMode, getDbRef]);
+  }, [session, featureRoundState, activeScenarioId, activeScenario, roleSlots, accessMode, getDbRef, currentUserUid]);
 
   // Sync Draft Scores
   useEffect(() => {
@@ -672,8 +896,14 @@ const snap = await getDoc(getDbRef(sId));
   const executeScenarioChange = (newId, directScen = null) => {
      const nextScen = directScen || [...defaultTemplates, ...customScenarios].find(s => s.id === newId);
      if (!nextScen) return;
+     const scenarioSnapshot = createScenarioSnapshot(nextScen);
      setActiveScenarioId(newId);
-     setSession(prev => ({ ...prev, activeFeatureId: nextScen?.features[0]?.id || 1 }));
+     setSession(prev => ({ 
+       ...prev, 
+       activeScenarioId: newId,
+       activeScenarioSnapshot: scenarioSnapshot,
+       activeFeatureId: nextScen?.features?.filter(f => f.isEnabled !== false)?.[0]?.id || nextScen?.features?.[0]?.id || 1 
+     }));
      setParticipantScores({});
      setFeatureRoundState(nextScen.features.reduce((acc, curr) => {
         acc[curr.id] = { status: 'notStarted', resultsRevealed: false };
@@ -685,18 +915,43 @@ const snap = await getDoc(getDbRef(sId));
      logTimelineEvent('SCENARIO', `Changed scenario to ${lang === 'en' ? nextScen.nameEn : nextScen.nameBg}`);
   };
 
+  const persistScenarioToLibrary = async (scenario) => {
+     if (!scenario || scenario.isBuiltIn) return false;
+     const normalized = normalizeCustomScenarioForLibrary(scenario, currentUserUid);
+     try {
+        if (!db || !currentUserUid) throw new Error("Firestore/Auth not ready");
+        await setDoc(scenarioDocRef(db, normalized.id), normalized, { merge: true });
+        setCustomScenarios(prev => mergeCustomScenarioLists(prev.map(s => s.id === normalized.id ? normalized : s), [normalized]));
+        setScenarioLibraryStatus('synced');
+        return true;
+     } catch (e) {
+        console.warn("Scenario saved locally only", e);
+        setCustomScenarios(prev => mergeCustomScenarioLists(prev.map(s => s.id === normalized.id ? normalized : s), [normalized]));
+        setScenarioLibraryStatus('localOnly');
+        return false;
+     }
+  };
+
+  const saveActiveScenarioToLibrary = async () => {
+     if (activeScenario.isBuiltIn) {
+        duplicateToCustom();
+        return;
+     }
+     const ok = await persistScenarioToLibrary({ ...activeScenario, updatedAt: nowIso() });
+     setScenarioLibraryStatus(ok ? 'savedNow' : 'localOnly');
+  };
+
   const duplicateToCustom = () => {
      const newId = `custom-${Date.now()}`;
-     const duplicated = {
+     const duplicated = normalizeCustomScenarioForLibrary({
         ...activeScenario,
         id: newId,
-        isBuiltIn: false,
         nameEn: `${activeScenario.nameEn} (Copy)`,
         nameBg: `${activeScenario.nameBg} (Копие)`,
-        features: activeFeatures.map(f => ({...f, id: `f-${Date.now()}-${Math.random()}`}))
-     };
-     setCustomScenarios(prev => [...prev, duplicated]);
-     
+        features: (activeScenario.features || activeFeatures).map((f, idx) => normalizeFeature({ ...f, id: `f-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}` }, idx))
+     }, currentUserUid);
+     setCustomScenarios(prev => mergeCustomScenarioLists(prev, [duplicated]));
+
      if (session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') {
         setShowScenarioChangeConfirm(newId);
      } else {
@@ -706,19 +961,19 @@ const snap = await getDoc(getDbRef(sId));
 
   const createBlankScenario = () => {
      const newId = `custom-${Date.now()}`;
-     const newScen = {
+     const newScen = normalizeCustomScenarioForLibrary({
         id: newId,
-        isBuiltIn: false,
         nameEn: "New Custom Scenario",
         nameBg: "Нов персонален сценарий",
         descEn: "",
         descBg: "",
+        domain: "Custom",
         features: [
            { id: `f-${Date.now()}`, title_en: "Feature 1", title_bg: "Функционалност 1", desc_en: "", desc_bg: "", details_en: "", details_bg: "", bv: 1, tc: 1, rr: 1, js: 1 }
         ]
-     };
-     setCustomScenarios(prev => [...prev, newScen]);
-     
+     }, currentUserUid);
+     setCustomScenarios(prev => mergeCustomScenarioLists(prev, [newScen]));
+
      if (session.lifecycleStatus === 'inProgress' || session.lifecycleStatus === 'debrief') {
         setShowScenarioChangeConfirm(newId);
      } else {
@@ -728,7 +983,7 @@ const snap = await getDoc(getDbRef(sId));
 
   const updateActiveCustomScenario = (field, value) => {
      if (activeScenario.isBuiltIn) return;
-     setCustomScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, [field]: value } : s));
+     setCustomScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, [field]: value, updatedAt: nowIso() } : s));
   };
 
   const updateActiveCustomFeature = (fId, field, value) => {
@@ -737,27 +992,128 @@ const snap = await getDoc(getDbRef(sId));
         if (s.id !== activeScenarioId) return s;
         return {
            ...s,
-           features: s.features.map(f => f.id === fId ? { ...f, [field]: value } : f)
+           updatedAt: nowIso(),
+           features: s.features.map((f, idx) => f.id === fId ? normalizeFeature({ ...f, [field]: value }, idx) : f)
         };
      }));
   };
 
   const addCustomFeature = () => {
      if (activeScenario.isBuiltIn) return;
-     const newF = { id: `f-${Date.now()}`, title_en: "New Feature", title_bg: "Нова функционалност", desc_en: "", desc_bg: "", details_en: "", details_bg: "", bv: 1, tc: 1, rr: 1, js: 1 };
-     setCustomScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, features: [...s.features, newF] } : s));
+     const newF = normalizeFeature({ id: `f-${Date.now()}`, title_en: "New Feature", title_bg: "Нова функционалност", desc_en: "", desc_bg: "", details_en: "", details_bg: "", bv: 1, tc: 1, rr: 1, js: 1 }, activeScenario.features?.length || 0);
+     setCustomScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, updatedAt: nowIso(), features: [...(s.features || []), newF] } : s));
   };
 
   const deleteCustomFeature = (fId) => {
      if (activeScenario.isBuiltIn) return;
-     setCustomScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, features: s.features.filter(f => f.id !== fId) } : s));
+     setCustomScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, updatedAt: nowIso(), features: (s.features || []).filter(f => f.id !== fId) } : s));
   };
 
-  const deleteCustomScenario = () => {
+  const deleteCustomScenario = async () => {
      if (activeScenario.isBuiltIn) return;
-     const remaining = customScenarios.filter(s => s.id !== activeScenarioId);
-     setCustomScenarios(remaining);
+     const scenarioIdToDelete = activeScenarioId;
+     setCustomScenarios(prev => prev.filter(s => s.id !== scenarioIdToDelete));
+     try {
+        if (db && currentUserUid) await deleteDoc(scenarioDocRef(db, scenarioIdToDelete));
+     } catch (e) {
+        console.warn("Could not delete scenario from Firestore", e);
+     }
      executeScenarioChange('geekbooks');
+  };
+
+  // TRAINER ACCOUNT AUTH
+  const persistCurrentScenariosForUid = async (uid) => {
+    if (!db || !uid) return false;
+    const customOnly = (customScenarios || []).filter(s => !s.isBuiltIn);
+    if (!customOnly.length) return true;
+
+    const normalizedScenarios = customOnly.map(s => normalizeCustomScenarioForLibrary({
+      ...s,
+      ownerUid: uid,
+      isBuiltIn: false,
+      isCustom: true,
+      visibility: 'private',
+      updatedAt: nowIso()
+    }, uid));
+
+    await Promise.all(
+      normalizedScenarios.map(scenario =>
+        setDoc(scenarioDocRef(db, scenario.id), scenario, { merge: true })
+      )
+    );
+
+    setCustomScenarios(prev => mergeCustomScenarioLists(
+      normalizedScenarios,
+      prev.map(s => s.isBuiltIn ? s : normalizeCustomScenarioForLibrary({ ...s, ownerUid: uid }, uid))
+    ));
+    localStorage.setItem('wsjf_scenarios', JSON.stringify(normalizedScenarios));
+    return true;
+  };
+
+  const handleTrainerGoogleSignIn = async () => {
+    if (!auth) return;
+    setAuthBusy(true);
+    setAuthError("");
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    try {
+      let credential;
+      const current = auth.currentUser;
+
+      if (current?.isAnonymous) {
+        try {
+          credential = await linkWithPopup(current, provider);
+        } catch (linkError) {
+          const code = linkError?.code || "";
+          if (
+            code === "auth/credential-already-in-use" ||
+            code === "auth/email-already-in-use" ||
+            code === "auth/provider-already-linked" ||
+            code === "auth/account-exists-with-different-credential"
+          ) {
+            credential = await signInWithPopup(auth, provider);
+          } else {
+            throw linkError;
+          }
+        }
+      } else {
+        credential = await signInWithPopup(auth, provider);
+      }
+
+      const user = credential.user;
+      setAuthUser(user);
+      await persistCurrentScenariosForUid(user.uid);
+      setScenarioLibraryStatus('synced');
+      setAccessMode('trainerUnlocked');
+      logTimelineEvent('ACCESS', 'Trainer signed in with Google');
+    } catch (e) {
+      console.error("Google trainer sign-in failed", e);
+      setAuthError(e?.message || t.authFailed);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleTrainerSignOut = async () => {
+    if (!auth) return;
+    setAuthBusy(true);
+    setAuthError("");
+
+    try {
+      await signOut(auth);
+      const anon = await signInAnonymously(auth);
+      setAuthUser(anon.user);
+      setAccessMode('participant');
+      setSessionFound(false);
+      setCurrentParticipantId(null);
+    } catch (e) {
+      console.error("Trainer sign-out failed", e);
+      setAuthError(e?.message || t.authFailed);
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   // ACTIONS
@@ -858,10 +1214,13 @@ const snap = await getDoc(getDbRef(sId));
       session: {
         ...session,
         trainerUid,
+        activeScenarioId,
+        activeScenarioSnapshot: createScenarioSnapshot(activeScenario),
         lifecycleStatus: nextLifecycleStatus
       },
       featureRoundState,
       activeScenarioId,
+      activeScenarioSnapshot: createScenarioSnapshot(activeScenario),
       roleSlots,
       joinedParticipants: joinedParticipants || [],
       participantsById,
@@ -956,10 +1315,13 @@ const snap = await getDoc(getDbRef(sId));
         session: {
           ...session,
           trainerUid: session.trainerUid || currentUserUid || authUser?.uid || null,
+          activeScenarioId,
+          activeScenarioSnapshot: createScenarioSnapshot(activeScenario),
           lifecycleStatus: lifecycleStatusForAction
         },
         featureRoundState: nextFeatureRoundState,
         activeScenarioId,
+        activeScenarioSnapshot: createScenarioSnapshot(activeScenario),
         roleSlots,
         updatedAt: new Date().toISOString()
       }, { merge: true });
@@ -1078,13 +1440,15 @@ const snap = await getDoc(getDbRef(sId));
         const data = snap.data();
 
         console.log("Session found:", data);
+        if (data.session?.activeScenarioSnapshot) upsertScenarioSnapshot(data.session.activeScenarioSnapshot);
 
         setSession(data.session || { ...session, id: cleanSessionId });
         setRoleSlots(data.roleSlots || []);
         setJoinedParticipants(getParticipantsFromDoc(data));
         setParticipantScores(data.participantScores || {});
         if (data.featureRoundState) setFeatureRoundState(data.featureRoundState);
-        if (data.activeScenarioId) setActiveScenarioId(data.activeScenarioId);
+        if (data.session?.activeScenarioId) setActiveScenarioId(data.session.activeScenarioId);
+            else if (data.activeScenarioId) setActiveScenarioId(data.activeScenarioId);
         setSessionFound(true);
         setJoinError("");
       } else {
@@ -1608,7 +1972,16 @@ const snap = await getDoc(getDbRef(sId));
                  <input type="password" value={trainerPinInput} onChange={e => setTrainerPinInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTrainerLogin()} className="w-full p-4 border border-[#D9E2F0] rounded-xl focus:border-[#5B5FEF] focus:ring-2 focus:ring-[#EEF4FF] outline-none transition-all font-mono text-xl text-center tracking-widest" placeholder="••••" />
                  {pinError && <p className="text-[#EF4444] text-xs font-bold mt-2">{t.incorrectPin}</p>}
               </div>
-              <button onClick={handleTrainerLogin} className="w-full bg-[#5B5FEF] hover:bg-[#4F46E5] text-white font-bold py-4 px-4 rounded-xl transition-colors shadow-md mb-4">{t.unlockTrainer}</button>
+              <button onClick={handleTrainerLogin} className="w-full bg-[#5B5FEF] hover:bg-[#4F46E5] text-white font-bold py-4 px-4 rounded-xl transition-colors shadow-md mb-3">{t.unlockTrainer}</button>
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#D9E2F0]"></div></div>
+                <div className="relative flex justify-center"><span className="bg-white px-3 text-[10px] font-bold uppercase tracking-wider text-[#7A89A3]">or</span></div>
+              </div>
+              <button onClick={handleTrainerGoogleSignIn} disabled={authBusy} className="w-full bg-white hover:bg-[#F8FAFF] text-[#172033] font-bold py-3.5 px-4 rounded-xl transition-colors border border-[#D9E2F0] shadow-sm mb-3 disabled:opacity-60">
+                {authBusy ? t.authWorking : t.signInGoogleUnlock}
+              </button>
+              <p className="text-[11px] text-[#7A89A3] leading-relaxed mb-3">{t.scenarioSyncHint}</p>
+              {authError && <p className="text-[#EF4444] text-xs font-bold mb-3">{authError}</p>}
               <button onClick={() => setAccessMode('participant')} className="text-xs font-bold text-[#7A89A3] hover:text-[#172033] transition-colors">{t.backToParticipant}</button>
            </div>
         </div>
@@ -1865,6 +2238,15 @@ const snap = await getDoc(getDbRef(sId));
                     </button>
                  )}
                  <div className="w-px h-4 bg-[#D9E2F0] mx-1"></div>
+                 {isPersistentTrainerAccount ? (
+                    <button onClick={handleTrainerSignOut} disabled={authBusy} className="text-[10px] font-bold text-[#12B981] bg-[#ECFDF5] border border-[#BBF7D0] px-3 py-1.5 rounded-lg hover:bg-[#D1FAE5] uppercase tracking-wider flex items-center transition-colors disabled:opacity-60" title={authUser?.email || t.persistentTrainer}>
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1.5"/> {t.persistentTrainer}
+                    </button>
+                 ) : (
+                    <button onClick={handleTrainerGoogleSignIn} disabled={authBusy} className="text-[10px] font-bold text-[#D97706] bg-[#FEF3C7] border border-[#FDE68A] px-3 py-1.5 rounded-lg hover:bg-[#FDE68A] uppercase tracking-wider flex items-center transition-colors disabled:opacity-60" title={t.scenarioSyncHint}>
+                      <Shield className="w-3.5 h-3.5 mr-1.5"/> {authBusy ? t.authWorking : t.signInGoogle}
+                    </button>
+                 )}
                  <button onClick={() => setShowShareModal(true)} className="text-[10px] font-bold text-[#3366FF] bg-[#EEF4FF] border border-[#C6D4EA] px-3 py-1.5 rounded-lg hover:bg-[#D9E2F0] uppercase tracking-wider flex items-center transition-colors">
                     <Share2 className="w-3.5 h-3.5 mr-1.5"/> {t.btnShare}
                  </button>

@@ -55,6 +55,18 @@ service cloud.firestore {
       allow delete: if isTrainer();
     }
 
+
+    match /artifacts/{appId}/public/data/scenarios/{scenarioId} {
+      allow read: if signedIn()
+        && resource.data.ownerUid == request.auth.uid;
+
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      allow update, delete: if signedIn()
+        && resource.data.ownerUid == request.auth.uid;
+    }
+
     match /artifacts/{appId}/public/data/{document=**} {
       allow read: if signedIn();
       allow write: if false;
