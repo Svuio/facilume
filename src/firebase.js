@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// ВАЖНО: Замести този обект с ТВОИТЕ данни от Firebase Console!
 const firebaseConfig = {
   apiKey: "AIzaSyC7AFoL5wZhxceS8XxZ_06rmBMJCGRjKT0",
   authDomain: "facilume.firebaseapp.com",
@@ -12,9 +12,8 @@ const firebaseConfig = {
   measurementId: "G-DLHVG45W0J"
 };
 
-// Инициализираме Firebase
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
-// Инициализираме Firestore (базата данни)
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+export { signInAnonymously, onAuthStateChanged };

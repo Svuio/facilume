@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function changedTopLevelKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function isTrainer() {
+      return signedIn()
+        && resource.data.trainerUid == request.auth.uid;
+    }
+
+    function isCreatingTrainerSession() {
+      return signedIn()
+        && request.resource.data.trainerUid == request.auth.uid
+        && request.resource.data.session.trainerUid == request.auth.uid;
+    }
+
+    function participantMapChangedOnlyOwnUid() {
+      return !changedTopLevelKeys().hasAny(['participantsById'])
+        || request.resource.data.participantsById
+          .diff(resource.data.participantsById)
+          .affectedKeys()
+          .hasOnly([request.auth.uid]);
+    }
+
+    function scoreMapChangedOnlyOwnUid() {
+      return !changedTopLevelKeys().hasAny(['participantScores'])
+        || request.resource.data.participantScores
+          .diff(resource.data.participantScores)
+          .affectedKeys()
+          .hasOnly([request.auth.uid]);
+    }
+
+    function participantCanUpdateSelfOnly() {
+      return signedIn()
+        && changedTopLevelKeys().hasOnly(['participantsById', 'participantScores', 'updatedAt'])
+        && participantMapChangedOnlyOwnUid()
+        && scoreMapChangedOnlyOwnUid();
+    }
+
+    match /artifacts/{appId}/public/data/sessions/{sessionId} {
+      allow create: if isCreatingTrainerSession();
+
+      allow read: if signedIn();
+
+      allow update: if isTrainer() || participantCanUpdateSelfOnly();
+
+      allow delete: if isTrainer();
+    }
+
+    match /artifacts/{appId}/public/data/{document=**} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
