@@ -438,7 +438,7 @@ export default function App() {
   const [accessMode, setAccessMode] = useState('participant'); 
   const [trainerPinInput, setTrainerPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
-const [trainerPin] = useState(() => String(Math.floor(Math.random() * 9000) + 1000));
+const [trainerPin] = useState("0000");
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showScenarioChangeConfirm, setShowScenarioChangeConfirm] = useState(null);
@@ -824,73 +824,154 @@ const snap = await getDoc(getDbRef(sId));
     return processed;
   }, [calcCriterionStats, session.capacity, activeFeatures]);
 
-  const handleOpenLobby = async () => {
-  const newState = 'lobbyOpen';
-
-  setSession(prev => ({
-    ...prev,
-    lifecycleStatus: newState,
-    trainerUid: prev.trainerUid || currentUserUid
-  }));
-
-  logTimelineEvent('SESSION', `Status changed to ${newState}`);
-
-  if (db) {
-    try {
-      await setDoc(getDbRef(), buildSessionPayload({
-        trainerUid: currentUserUid,
-        session: { lifecycleStatus: newState },
-        participantsById: {},
-        participantScores: {}
-      }), { merge: true });
-    } catch (e) {
-      console.error("Failed to create session", e);
+  const ensureSessionExists = async (targetLifecycleStatus = null) => {
+    if (!db || !session?.id) {
+      console.error("Cannot ensure session exists: missing db or session.id");
+      return false;
     }
-  }
-};
-    const newState = 'lobbyOpen';
-    setSession(prev => ({ ...prev, lifecycleStatus: newState }));
-    logTimelineEvent('SESSION', `Status changed to ${newState}`);
-    
-    if (db) {
-       try {
-          await setDoc(getDbRef(), {
-             session: { ...session, lifecycleStatus: newState },
-             featureRoundState,
-             activeScenarioId,
-             roleSlots,
-             joinedParticipants: [],
-             participantScores: {}
-          });
-       } catch(e) { console.error("Failed to create session", e); }
+
+    const trainerUid = currentUserUid || authUser?.uid || session.trainerUid || null;
+
+    if (!trainerUid) {
+      console.error("Cannot ensure session exists: missing trainer/auth uid");
+      return false;
+    }
+
+    const nextLifecycleStatus =
+      targetLifecycleStatus ||
+      (session.lifecycleStatus === "draft" ? "lobbyOpen" : session.lifecycleStatus);
+
+    const participantsById = {};
+    (joinedParticipants || []).forEach((participant) => {
+      const participantId = participant.uid || participant.id;
+      if (participantId) {
+        participantsById[participantId] = {
+          ...participant,
+          uid: participant.uid || participantId,
+          id: participant.id || participantId
+        };
+      }
+    });
+
+    const payload = {
+      trainerUid,
+      session: {
+        ...session,
+        trainerUid,
+        lifecycleStatus: nextLifecycleStatus
+      },
+      featureRoundState,
+      activeScenarioId,
+      roleSlots,
+      joinedParticipants: joinedParticipants || [],
+      participantsById,
+      participantScores: participantScores || {},
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      await setDoc(getDbRef(session.id), payload, { merge: true });
+
+      setSession((prev) => ({
+        ...prev,
+        trainerUid,
+        lifecycleStatus: nextLifecycleStatus
+      }));
+
+      console.log("Session ensured in Firestore:", session.id, payload);
+      return true;
+    } catch (error) {
+      console.error("Failed to ensure session exists:", error);
+      return false;
     }
   };
 
-  const updateSessionState = (newState) => {
-  setSession(prev => ({
-    ...prev,
-    lifecycleStatus: newState,
-    trainerUid: prev.trainerUid || currentUserUid
-  }));
+  const handleOpenLobby = async () => {
+    const ok = await ensureSessionExists("lobbyOpen");
 
-  logTimelineEvent('SESSION', `Status changed to ${newState}`);
-};
+    if (!ok) {
+      alert("Could not open lobby. Check Firebase connection and permissions.");
+      return;
+    }
 
-  const updateFeatureStatus = (statusUpdate) => {
-     if (!activeFeatures.length) return;
-     setFeatureRoundState(prev => {
-        const next = { ...prev };
-        next[session.activeFeatureId] = { 
-           ...next[session.activeFeatureId], 
-           status: statusUpdate,
-           resultsRevealed: statusUpdate === 'resultsRevealed' || statusUpdate === 'discussion' || statusUpdate === 'reScoreOpen' ? true : next[session.activeFeatureId]?.resultsRevealed
-        };
-        return next;
-     });
-     logTimelineEvent('FEATURE', `Feature status changed to ${statusUpdate}`, session.activeFeatureId);
-     if (session.lifecycleStatus === 'lobbyOpen') {
-        updateSessionState('inProgress');
-     }
+    logTimelineEvent("SESSION", "Lobby opened");
+  };
+
+  const updateSessionState = async (newState) => {
+    const ok = await ensureSessionExists(newState);
+
+    if (!ok) {
+      alert("Could not update session state. Check Firebase connection and permissions.");
+      return;
+    }
+
+    setSession(prev => ({
+      ...prev,
+      lifecycleStatus: newState,
+      trainerUid: prev.trainerUid || currentUserUid || authUser?.uid || null
+    }));
+
+    logTimelineEvent('SESSION', `Status changed to ${newState}`);
+  };
+
+  const updateFeatureStatus = async (statusUpdate) => {
+    if (!activeFeatures.length) return;
+
+    const lifecycleStatusForAction =
+      session.lifecycleStatus === "draft" || session.lifecycleStatus === "lobbyOpen"
+        ? "inProgress"
+        : session.lifecycleStatus;
+
+    const ok = await ensureSessionExists(lifecycleStatusForAction);
+
+    if (!ok) {
+      alert("Could not update feature status. Check Firebase connection and permissions.");
+      return;
+    }
+
+    const nextFeatureRoundState = {
+      ...featureRoundState,
+      [session.activeFeatureId]: {
+        ...(featureRoundState[session.activeFeatureId] || {}),
+        status: statusUpdate,
+        resultsRevealed:
+          statusUpdate === "resultsRevealed" ||
+          statusUpdate === "discussion" ||
+          statusUpdate === "reScoreOpen"
+            ? true
+            : featureRoundState[session.activeFeatureId]?.resultsRevealed || false
+      }
+    };
+
+    setFeatureRoundState(nextFeatureRoundState);
+
+    setSession((prev) => ({
+      ...prev,
+      lifecycleStatus: lifecycleStatusForAction
+    }));
+
+    try {
+      await setDoc(getDbRef(session.id), {
+        trainerUid: session.trainerUid || currentUserUid || authUser?.uid || null,
+        session: {
+          ...session,
+          trainerUid: session.trainerUid || currentUserUid || authUser?.uid || null,
+          lifecycleStatus: lifecycleStatusForAction
+        },
+        featureRoundState: nextFeatureRoundState,
+        activeScenarioId,
+        roleSlots,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error("Failed to persist feature status:", error);
+    }
+
+    logTimelineEvent(
+      "FEATURE",
+      `Feature status changed to ${statusUpdate}`,
+      session.activeFeatureId
+    );
   };
 
   const changeFeature = (dir) => {
@@ -902,7 +983,7 @@ const snap = await getDoc(getDbRef(sId));
     const newId = activeFeatures[nextIndex].id;
     setSession(prev => ({ ...prev, activeFeatureId: newId }));
     setShowFeatureDetails(false);
-    logTimelineEvent('FEATURE', `Mapsd to feature`, newId);
+    logTimelineEvent('FEATURE', `Moved to feature`, newId);
   };
 
   const executeResetFeatureRound = async () => {
@@ -913,73 +994,50 @@ const snap = await getDoc(getDbRef(sId));
       }
     });
     setParticipantScores(newScores);
-    
-    setFeatureRoundState(prev => ({
-       ...prev,
-       [session.activeFeatureId]: { status: 'notStarted', resultsRevealed: false }
-    }));
+
+    const nextFeatureRoundState = {
+      ...featureRoundState,
+      [session.activeFeatureId]: { status: 'notStarted', resultsRevealed: false }
+    };
+
+    setFeatureRoundState(nextFeatureRoundState);
     setDraftScores({ bv: null, tc: null, rr: null, js: null });
     setShowResetConfirm(false);
     logTimelineEvent('FEATURE', `Scores reset`, session.activeFeatureId);
 
     if (db) {
-       await updateDoc(getDbRef(), { participantScores: newScores });
+       await updateDoc(getDbRef(), {
+         participantScores: newScores,
+         featureRoundState: nextFeatureRoundState,
+         updatedAt: new Date().toISOString()
+       });
     }
   };
 
-  const handleEndSession = () => {
-     updateSessionState('ended');
+  const handleEndSession = async () => {
+     await updateSessionState('ended');
      setShowEndSessionModal(false);
   };
 
-  const ensureSessionExists = async () => {
-  if (!db || !currentUserUid || !session?.id) return false;
+  const handleCopyShareLink = async () => {
+    const ok = await ensureSessionExists("lobbyOpen");
 
-  try {
-    await setDoc(getDbRef(session.id), {
-      trainerUid: session.trainerUid || currentUserUid,
-      session: {
-        ...session,
-        trainerUid: session.trainerUid || currentUserUid,
-        lifecycleStatus: session.lifecycleStatus === 'draft'
-          ? 'lobbyOpen'
-          : session.lifecycleStatus
-      },
-      featureRoundState,
-      activeScenarioId,
-      roleSlots,
-      participantsById: {},
-      participantScores: participantScores || {},
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+    if (!ok) {
+      alert("Could not create session link. Check Firebase connection and permissions.");
+      return;
+    }
 
-    setSession(prev => ({
-      ...prev,
-      trainerUid: prev.trainerUid || currentUserUid,
-      lifecycleStatus: prev.lifecycleStatus === 'draft'
-        ? 'lobbyOpen'
-        : prev.lifecycleStatus
-    }));
+    const shareUrl = `${window.location.origin}${window.location.pathname}?session=${session.id}`;
 
-    return true;
-  } catch (e) {
-    console.error("Failed to ensure session exists:", e);
-    return false;
-  }
-};
-
-const handleCopyShareLink = async () => {
-  const ok = await ensureSessionExists();
-  if (!ok) {
-    alert("Could not create session link. Check Firebase connection and permissions.");
-    return;
-  }
-
-  const shareUrl = `${window.location.origin}${window.location.pathname}?session=${session.id}`;
-  await navigator.clipboard.writeText(shareUrl);
-  setIsCopied(true);
-  setTimeout(() => setIsCopied(false), 2000);
-};
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy share link:", error);
+      alert(shareUrl);
+    }
+  };
 
   const handleExportCSV = () => {
     const backlog = getCalculatedBacklog();
@@ -1002,108 +1060,97 @@ const handleCopyShareLink = async () => {
     document.body.removeChild(link);
   };
 
-const findSession = async () => {
-  const cleanSessionId = joinSessionId.trim().toUpperCase();
+  const findSession = async () => {
+    const cleanSessionId = joinSessionId.trim().toUpperCase();
 
-  if (!cleanSessionId || !db) return;
+    if (!cleanSessionId || !db) return;
 
-  try {
-    console.log("Finding session:", cleanSessionId);
-    console.log("Firestore path:", `artifacts/${appId}/public/data/sessions/${cleanSessionId}`);
+    try {
+      console.log("Finding session:", cleanSessionId);
+      console.log(
+        "Firestore path:",
+        `artifacts/${appId}/public/data/sessions/${cleanSessionId}`
+      );
 
-    const snap = await getDoc(getDbRef(cleanSessionId));
+      const snap = await getDoc(getDbRef(cleanSessionId));
 
-    if (snap.exists()) {
-      const data = snap.data();
+      if (snap.exists()) {
+        const data = snap.data();
 
-      console.log("Session found:", data);
+        console.log("Session found:", data);
 
-      setSession(data.session);
-      setRoleSlots(data.roleSlots || []);
-      setJoinedParticipants(getParticipantsFromDoc(data));
-      setSessionFound(true);
-      setJoinError("");
-    } else {
-      console.warn("Session not found at path:", `artifacts/${appId}/public/data/sessions/${cleanSessionId}`);
-      setJoinError(t.sessionNotFound);
+        setSession(data.session || { ...session, id: cleanSessionId });
+        setRoleSlots(data.roleSlots || []);
+        setJoinedParticipants(getParticipantsFromDoc(data));
+        setParticipantScores(data.participantScores || {});
+        if (data.featureRoundState) setFeatureRoundState(data.featureRoundState);
+        if (data.activeScenarioId) setActiveScenarioId(data.activeScenarioId);
+        setSessionFound(true);
+        setJoinError("");
+      } else {
+        console.warn(
+          "Session not found at path:",
+          `artifacts/${appId}/public/data/sessions/${cleanSessionId}`
+        );
+        setJoinError(t.sessionNotFound);
+      }
+    } catch (error) {
+      console.error("Find session error:", error);
+      setJoinError("Connection error. Check Firebase permissions and console logs.");
     }
-  } catch (e) {
-    console.error("Find session error:", e);
-    setJoinError("Connection error. Check Firebase permissions and console logs.");
-  }
-};
-
-  const handleJoin = async () => {
-  if (!joinName.trim() || !joinRoleSlotId || !db || !currentUserUid) return;
-
-  const slot = roleSlots.find(r => r.id === joinRoleSlotId);
-  if (!slot) return;
-
-  const newParticipant = {
-    id: currentUserUid,
-    uid: currentUserUid,
-    name: joinName.trim(),
-    roleSlotId: joinRoleSlotId,
-    role: slot.role,
-    isMock: false,
-    joinedAt: new Date().toISOString(),
-    lastActivityAt: new Date().toISOString()
   };
 
-  setJoinedParticipants(prev => [...prev.filter(p => p.id !== currentUserUid), newParticipant]);
-  setCurrentParticipantId(newParticipant.id);
+  const handleJoin = async () => {
+    if (!joinName.trim() || !joinRoleSlotId || !db || !currentUserUid) return;
 
-  try {
-    await updateDoc(getDbRef(), {
-      [`participantsById.${currentUserUid}`]: newParticipant
-    });
-  } catch (e) {
-    console.error("Join error", e);
-  }
-};
-    if (!joinName.trim() || !joinRoleSlotId || !db) return;
     const slot = roleSlots.find(r => r.id === joinRoleSlotId);
     if (!slot) return;
-    
+
     const newParticipant = {
-      id: `p-${Date.now()}`, name: joinName, roleSlotId: joinRoleSlotId,
-      role: slot.role, isMock: false, joinedAt: new Date().toISOString()
+      id: currentUserUid,
+      uid: currentUserUid,
+      name: joinName.trim(),
+      roleSlotId: joinRoleSlotId,
+      role: slot.role,
+      isMock: false,
+      joinedAt: new Date().toISOString(),
+      lastActivityAt: new Date().toISOString()
     };
-    
-    setJoinedParticipants(prev => [...prev, newParticipant]);
+
+    setJoinedParticipants(prev => [...prev.filter(p => p.id !== currentUserUid), newParticipant]);
     setCurrentParticipantId(newParticipant.id);
-    
+
     try {
-       const snap = await getDoc(getDbRef());
-       const currentList = snap.data()?.joinedParticipants || [];
-       await updateDoc(getDbRef(), { joinedParticipants: [...currentList, newParticipant] });
-    } catch(e) { console.error("Join error", e); }
+      await updateDoc(getDbRef(), {
+        [`participantsById.${currentUserUid}`]: newParticipant,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error("Join error", e);
+      setJoinError("Could not join session. Check Firebase permissions and console logs.");
+    }
   };
 
   const handleLeave = async () => {
-  const leavingId = currentParticipantId;
+    const leavingId = currentParticipantId;
 
-  setJoinedParticipants(prev => prev.filter(p => p.id !== leavingId));
-  setCurrentParticipantId(null);
-  setSessionFound(false);
-  setJoinName("");
-  setJoinRoleSlotId("");
-  setJoinSessionId("");
-
-  if (db && leavingId) {
-    try {
-      await updateDoc(getDbRef(), {
-        [`participantsById.${leavingId}`]: deleteField()
-      });
-    } catch (e) {
-      console.error("Leave error", e);
-    }
-  }
-};
-    setJoinedParticipants(prev => prev.filter(p => p.id !== currentParticipantId));
+    setJoinedParticipants(prev => prev.filter(p => p.id !== leavingId));
     setCurrentParticipantId(null);
     setSessionFound(false);
-    setJoinName(""); setJoinRoleSlotId(""); setJoinSessionId("");
+    setJoinName("");
+    setJoinRoleSlotId("");
+    setJoinSessionId("");
+
+    if (db && leavingId) {
+      try {
+        await updateDoc(getDbRef(), {
+          [`participantsById.${leavingId}`]: deleteField(),
+          updatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Leave error", e);
+      }
+    }
   };
 
   const handleDraftScore = (crit, val) => {
