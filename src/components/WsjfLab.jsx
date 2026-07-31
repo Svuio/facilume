@@ -12,7 +12,7 @@ import {
 // === FIREBASE ИНТЕГРАЦИЯ ===
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc, deleteField } from 'firebase/firestore';
 
 // 🔴 Твоите реални ключове за facilume 🔴
 const userFirebaseConfig = {
@@ -438,7 +438,7 @@ export default function App() {
   const [accessMode, setAccessMode] = useState('participant'); 
   const [trainerPinInput, setTrainerPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
-  const trainerPin = "0000"; 
+const [trainerPin] = useState(() => String(Math.floor(Math.random() * 9000) + 1000));
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showScenarioChangeConfirm, setShowScenarioChangeConfirm] = useState(null);
@@ -462,6 +462,7 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, u => setAuthUser(u));
     return () => unsub();
   }, []);
+  const currentUserUid = authUser?.uid || null;
 
   // SCENARIO STATE
   const [customScenarios, setCustomScenarios] = useState(() => {
@@ -523,6 +524,31 @@ export default function App() {
   const [isCopied, setIsCopied] = useState(false);
 
   const getDbRef = useCallback((sId) => doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId || (session?.id || 'default')), [session?.id]);
+const getParticipantsFromDoc = useCallback((data) => {
+  if (data?.participantsById && typeof data.participantsById === 'object') {
+    return Object.values(data.participantsById).filter(Boolean);
+  }
+  return data?.joinedParticipants || [];
+}, []);
+
+const buildSessionPayload = useCallback((overrides = {}) => {
+  const trainerUid = overrides.trainerUid || session.trainerUid || currentUserUid || null;
+
+  return {
+    trainerUid,
+    session: {
+      ...session,
+      trainerUid,
+      ...(overrides.session || {})
+    },
+    featureRoundState,
+    activeScenarioId,
+    roleSlots,
+    participantsById: overrides.participantsById || {},
+    participantScores: overrides.participantScores || participantScores || {},
+    updatedAt: new Date().toISOString()
+  };
+}, [session, currentUserUid, featureRoundState, activeScenarioId, roleSlots, participantScores]);
 
   const logTimelineEvent = useCallback((type, desc, featureId = null) => {
     setSessionTimeline(prev => [
@@ -540,12 +566,15 @@ export default function App() {
         const sId = match[1].toUpperCase();
         setJoinSessionId(sId);
         try {
-          const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sId));
+          console.log("Auto-connect session:", sId);
+console.log("Auto-connect path:", `artifacts/${appId}/public/data/sessions/${sId}`);
+
+const snap = await getDoc(getDbRef(sId));
           if (snap.exists()) {
              const data = snap.data();
              setSession(data.session);
              setRoleSlots(data.roleSlots || []);
-             setJoinedParticipants(data.joinedParticipants || []);
+             setJoinedParticipants(getParticipantsFromDoc(data));
              setSessionFound(true);
              setJoinError("");
           }
@@ -555,7 +584,7 @@ export default function App() {
       }
     };
     autoConnect();
-  }, [db, sessionFound, accessMode, currentParticipantId]);
+  }, [db, sessionFound, accessMode, currentParticipantId, getParticipantsFromDoc]);
 
   // Sync Features round state when scenario changes (Local Trainer)
   useEffect(() => {
@@ -578,7 +607,7 @@ export default function App() {
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setJoinedParticipants(data.joinedParticipants || []);
+        setJoinedParticipants(getParticipantsFromDoc(data));
         setParticipantScores(data.participantScores || {});
 
         if (accessMode === 'participant' || accessMode === 'participantPreview') {
@@ -590,7 +619,7 @@ export default function App() {
       }
     }, (err) => console.error("Sync error", err));
     return () => unsub();
-  }, [authUser, session.id, session.lifecycleStatus, accessMode, sessionFound, getDbRef]);
+  }, [authUser, session.id, session.lifecycleStatus, accessMode, sessionFound, getDbRef, getParticipantsFromDoc]);
 
   // FIREBASE TRAINER STATE PUSH
   useEffect(() => {
@@ -598,8 +627,16 @@ export default function App() {
       const pushState = async () => {
         try {
           await setDoc(getDbRef(), {
-             session, featureRoundState, activeScenarioId, roleSlots
-          }, { merge: true });
+  trainerUid: session.trainerUid || currentUserUid,
+  session: {
+    ...session,
+    trainerUid: session.trainerUid || currentUserUid
+  },
+  featureRoundState,
+  activeScenarioId,
+  roleSlots,
+  updatedAt: new Date().toISOString()
+}, { merge: true });
         } catch(e) { console.error("Push state error", e); }
       };
       pushState();
@@ -788,6 +825,29 @@ export default function App() {
   }, [calcCriterionStats, session.capacity, activeFeatures]);
 
   const handleOpenLobby = async () => {
+  const newState = 'lobbyOpen';
+
+  setSession(prev => ({
+    ...prev,
+    lifecycleStatus: newState,
+    trainerUid: prev.trainerUid || currentUserUid
+  }));
+
+  logTimelineEvent('SESSION', `Status changed to ${newState}`);
+
+  if (db) {
+    try {
+      await setDoc(getDbRef(), buildSessionPayload({
+        trainerUid: currentUserUid,
+        session: { lifecycleStatus: newState },
+        participantsById: {},
+        participantScores: {}
+      }), { merge: true });
+    } catch (e) {
+      console.error("Failed to create session", e);
+    }
+  }
+};
     const newState = 'lobbyOpen';
     setSession(prev => ({ ...prev, lifecycleStatus: newState }));
     logTimelineEvent('SESSION', `Status changed to ${newState}`);
@@ -807,9 +867,14 @@ export default function App() {
   };
 
   const updateSessionState = (newState) => {
-     setSession(prev => ({ ...prev, lifecycleStatus: newState }));
-     logTimelineEvent('SESSION', `Status changed to ${newState}`);
-  };
+  setSession(prev => ({
+    ...prev,
+    lifecycleStatus: newState,
+    trainerUid: prev.trainerUid || currentUserUid
+  }));
+
+  logTimelineEvent('SESSION', `Status changed to ${newState}`);
+};
 
   const updateFeatureStatus = (statusUpdate) => {
      if (!activeFeatures.length) return;
@@ -867,12 +932,54 @@ export default function App() {
      setShowEndSessionModal(false);
   };
 
-  const handleCopyShareLink = () => {
-     const shareUrl = `${window.location.origin}${window.location.pathname}?session=${session.id}`;
-     navigator.clipboard.writeText(shareUrl);
-     setIsCopied(true);
-     setTimeout(() => setIsCopied(false), 2000);
-  };
+  const ensureSessionExists = async () => {
+  if (!db || !currentUserUid || !session?.id) return false;
+
+  try {
+    await setDoc(getDbRef(session.id), {
+      trainerUid: session.trainerUid || currentUserUid,
+      session: {
+        ...session,
+        trainerUid: session.trainerUid || currentUserUid,
+        lifecycleStatus: session.lifecycleStatus === 'draft'
+          ? 'lobbyOpen'
+          : session.lifecycleStatus
+      },
+      featureRoundState,
+      activeScenarioId,
+      roleSlots,
+      participantsById: {},
+      participantScores: participantScores || {},
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+
+    setSession(prev => ({
+      ...prev,
+      trainerUid: prev.trainerUid || currentUserUid,
+      lifecycleStatus: prev.lifecycleStatus === 'draft'
+        ? 'lobbyOpen'
+        : prev.lifecycleStatus
+    }));
+
+    return true;
+  } catch (e) {
+    console.error("Failed to ensure session exists:", e);
+    return false;
+  }
+};
+
+const handleCopyShareLink = async () => {
+  const ok = await ensureSessionExists();
+  if (!ok) {
+    alert("Could not create session link. Check Firebase connection and permissions.");
+    return;
+  }
+
+  const shareUrl = `${window.location.origin}${window.location.pathname}?session=${session.id}`;
+  await navigator.clipboard.writeText(shareUrl);
+  setIsCopied(true);
+  setTimeout(() => setIsCopied(false), 2000);
+};
 
   const handleExportCSV = () => {
     const backlog = getCalculatedBacklog();
@@ -895,26 +1002,65 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  const findSession = async () => {
-    if (!joinSessionId.trim() || !db) return;
-    try {
-      const snap = await getDoc(getDbRef(joinSessionId.toUpperCase()));
-      if (snap.exists()) {
-         const data = snap.data();
-         setSession(data.session);
-         setRoleSlots(data.roleSlots || []);
-         setJoinedParticipants(data.joinedParticipants || []);
-         setSessionFound(true);
-         setJoinError("");
-      } else {
-         setJoinError(t.sessionNotFound);
-      }
-    } catch (e) {
-      setJoinError("Connection error.");
+const findSession = async () => {
+  const cleanSessionId = joinSessionId.trim().toUpperCase();
+
+  if (!cleanSessionId || !db) return;
+
+  try {
+    console.log("Finding session:", cleanSessionId);
+    console.log("Firestore path:", `artifacts/${appId}/public/data/sessions/${cleanSessionId}`);
+
+    const snap = await getDoc(getDbRef(cleanSessionId));
+
+    if (snap.exists()) {
+      const data = snap.data();
+
+      console.log("Session found:", data);
+
+      setSession(data.session);
+      setRoleSlots(data.roleSlots || []);
+      setJoinedParticipants(getParticipantsFromDoc(data));
+      setSessionFound(true);
+      setJoinError("");
+    } else {
+      console.warn("Session not found at path:", `artifacts/${appId}/public/data/sessions/${cleanSessionId}`);
+      setJoinError(t.sessionNotFound);
     }
-  };
+  } catch (e) {
+    console.error("Find session error:", e);
+    setJoinError("Connection error. Check Firebase permissions and console logs.");
+  }
+};
 
   const handleJoin = async () => {
+  if (!joinName.trim() || !joinRoleSlotId || !db || !currentUserUid) return;
+
+  const slot = roleSlots.find(r => r.id === joinRoleSlotId);
+  if (!slot) return;
+
+  const newParticipant = {
+    id: currentUserUid,
+    uid: currentUserUid,
+    name: joinName.trim(),
+    roleSlotId: joinRoleSlotId,
+    role: slot.role,
+    isMock: false,
+    joinedAt: new Date().toISOString(),
+    lastActivityAt: new Date().toISOString()
+  };
+
+  setJoinedParticipants(prev => [...prev.filter(p => p.id !== currentUserUid), newParticipant]);
+  setCurrentParticipantId(newParticipant.id);
+
+  try {
+    await updateDoc(getDbRef(), {
+      [`participantsById.${currentUserUid}`]: newParticipant
+    });
+  } catch (e) {
+    console.error("Join error", e);
+  }
+};
     if (!joinName.trim() || !joinRoleSlotId || !db) return;
     const slot = roleSlots.find(r => r.id === joinRoleSlotId);
     if (!slot) return;
@@ -934,7 +1080,26 @@ export default function App() {
     } catch(e) { console.error("Join error", e); }
   };
 
-  const handleLeave = () => {
+  const handleLeave = async () => {
+  const leavingId = currentParticipantId;
+
+  setJoinedParticipants(prev => prev.filter(p => p.id !== leavingId));
+  setCurrentParticipantId(null);
+  setSessionFound(false);
+  setJoinName("");
+  setJoinRoleSlotId("");
+  setJoinSessionId("");
+
+  if (db && leavingId) {
+    try {
+      await updateDoc(getDbRef(), {
+        [`participantsById.${leavingId}`]: deleteField()
+      });
+    } catch (e) {
+      console.error("Leave error", e);
+    }
+  }
+};
     setJoinedParticipants(prev => prev.filter(p => p.id !== currentParticipantId));
     setCurrentParticipantId(null);
     setSessionFound(false);
@@ -949,12 +1114,17 @@ export default function App() {
   };
 
   const submitFeatureScores = async () => {
-    if (accessMode === 'participantPreview' || !db) return;
+    if (accessMode === 'participantPreview' || !db || !currentParticipantId) return;
     if (!draftScores.bv || !draftScores.tc || !draftScores.rr || !draftScores.js) return;
     
     const featState = featureRoundState[session.activeFeatureId] || {};
     const targetField = featState.status === 'reScoreOpen' ? 'revised' : 'initial';
-    const scoreObj = { ...draftScores, submitted: true, submittedAt: new Date().toISOString() };
+    const scoreObj = {
+  ...draftScores,
+  participantUid: currentParticipantId,
+  submitted: true,
+  submittedAt: new Date().toISOString()
+};
     
     setParticipantScores(prev => ({
       ...prev,
